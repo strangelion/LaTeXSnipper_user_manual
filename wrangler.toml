@@ -1,0 +1,26 @@
+# LaTeXSnipper 用户手册 - Cloudflare Worker 配置
+# 使用方式: npx wrangler deploy
+# 或者直接复制 worker.js 内容到 Cloudflare Dashboard
+
+name = "latexsnipper-manual"
+main = "worker.js"
+compatibility_date = "2025-05-16"
+workers_dev = false
+preview_urls = false
+routes = [
+  "home.interknot.dpdns.org/*",
+  "help.interknot.dpdns.org/*"
+]
+
+# ---- KV Namespace ----
+[[kv_namespaces]]
+binding = "LATEXSNIPPER_KV"
+id = "9dd1c711ce404f81b4d3e89f55ade86e"
+
+# ---- 上传 HTML 到 KV ----
+# npx wrangler kv key put "pages/user_manual.html" --binding LATEXSNIPPER_KV --path ./user_manual.html
+
+# ---- 路由（可选） ----
+# routes = [
+#   { pattern = "docs.yourdomain.com/*", zone_id = "your-zone-id" }
+# ]
