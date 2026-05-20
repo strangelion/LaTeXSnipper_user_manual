@@ -370,14 +370,14 @@ code { font-family: var(--mono); font-size: .88em; }
   .card-front, .card-detail { padding: .9rem 1rem; }
   .card-front h3 { font-size: 1.15rem; }
   .card-viewport { min-height: 280px; }
-  .hero-title { font-size: 1.6rem; word-break: break-word; overflow-wrap: break-word; }
+  .hero-title { font-size: 1.6rem; }
   .hero-sub { font-size: 0.9rem; }
   .section-title { font-size: 1.4rem; }
   .slide-scroll { max-width: 100%; box-sizing: border-box; padding: 0 .5rem; }
 }
 
-@media (max-width: 400px){
-  .hero-title { font-size: 1.3rem; }
+@media (max-width: 420px){
+  .hero-title { font-size: clamp(1rem, 5cqi, 1.4rem); white-space: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .hero-sub { font-size: .82rem; }
   .hero-ctas .btn { font-size: .82rem; padding: .4rem .7rem; display: inline-block; margin-bottom: .4rem; }
   .card-viewport { min-height: 240px; }
@@ -387,6 +387,15 @@ code { font-family: var(--mono); font-size: .88em; }
   .main-nav a { margin-left: .5rem; font-size: .85rem; }
   .brand a { font-size: .9rem; }
   .brand-icon { width: 28px; height: 28px; }
+}
+
+@media (max-width: 350px){
+  .hero-title { font-size: clamp(.82rem, 4cqi, 1.1rem); white-space: nowrap; }
+  .hero-sub { font-size: .72rem; }
+  .hero-ctas .btn { font-size: .72rem; padding: .3rem .45rem; }
+  .main-nav a { margin-left: .3rem; font-size: .72rem; }
+  .brand a { font-size: .78rem; }
+  .main-nav { gap: .3rem; }
 }
 
 /* --- 用户手册暗色模式 --- */
