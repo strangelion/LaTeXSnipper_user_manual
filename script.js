@@ -78,8 +78,7 @@
         resolution: 256,
         dropRadius: 24,
         perturbance: 0.04,
-        interactive: true,
-        imageUrl: getGradientDataUrl()
+        interactive: true
       });
 
       document.addEventListener('mousemove', function (e) {
