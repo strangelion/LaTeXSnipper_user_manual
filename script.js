@@ -36,38 +36,17 @@
 
   let ripples;
 
-  function splitGradients(str) {
-    var parts = [], depth = 0, current = '';
-    for (var i = 0; i < str.length; i++) {
-      var ch = str[i];
-      if (ch === '(') depth++;
-      else if (ch === ')') depth--;
-      if (ch === ',' && depth === 0) { parts.push(current.trim()); current = ''; }
-      else current += ch;
-    }
-    if (current.trim()) parts.push(current.trim());
-    return parts;
-  }
-
-  function getGradientDataUrl(forceElement) {
-    var el = forceElement || overlay;
-    var savedInline = el.style.backgroundImage;
-    if (savedInline) el.style.backgroundImage = '';
-    var cs = getComputedStyle(el);
+  function getGradientDataUrl() {
+    var cs = getComputedStyle(overlay);
     var bg = cs.backgroundImage;
-    var w = el.offsetWidth;
-    var h = el.offsetHeight;
-    if (savedInline) el.style.backgroundImage = savedInline;
+    var w = overlay.offsetWidth;
+    var h = overlay.offsetHeight;
     if (!bg || bg === 'none' || !w || !h) return null;
-    var parts = splitGradients(bg);
-    if (parts.length === 0) return null;
     var c = document.createElement('canvas');
     c.width = w; c.height = h;
     var ctx = c.getContext('2d');
-    for (var i = parts.length - 1; i >= 0; i--) {
-      ctx.fillStyle = parts[i];
-      ctx.fillRect(0, 0, w, h);
-    }
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
     return c.toDataURL();
   }
 
@@ -78,7 +57,8 @@
         resolution: 256,
         dropRadius: 24,
         perturbance: 0.04,
-        interactive: true
+        interactive: true,
+        imageUrl: getGradientDataUrl()
       });
 
       document.addEventListener('mousemove', function (e) {
@@ -123,15 +103,15 @@
     window.addEventListener('load', deferInit);
   }
 
-  // Disabled: Re-init on theme switch - removed custom imageUrl, using transparent texture instead
-  // var themeObserver = new MutationObserver(function () {
-  //   if (ripples) {
-  //     setTimeout(function () {
-  //       ripples.imageUrl = getGradientDataUrl();
-  //       ripples.loadImage();
-  //     }, 50);
-  //   }
-  // });
+  // Re-init on theme switch so the gradient texture updates
+  var themeObserver = new MutationObserver(function () {
+    if (ripples) {
+      setTimeout(function () {
+        ripples.imageUrl = getGradientDataUrl();
+        ripples.loadImage();
+      }, 50);
+    }
+  });
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
   window.addEventListener('resize', function () {
