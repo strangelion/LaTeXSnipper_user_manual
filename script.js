@@ -36,6 +36,20 @@
 
   let ripples;
 
+  function getGradientDataUrl() {
+    var cs = getComputedStyle(overlay);
+    var bg = cs.backgroundImage;
+    var w = overlay.offsetWidth;
+    var h = overlay.offsetHeight;
+    if (!bg || bg === 'none' || !w || !h) return null;
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+    return c.toDataURL();
+  }
+
   function initRipples() {
     try {
       if (ripples) { ripples.destroy(); }
@@ -43,7 +57,8 @@
         resolution: 256,
         dropRadius: 24,
         perturbance: 0.04,
-        interactive: true
+        interactive: true,
+        imageUrl: getGradientDataUrl()
       });
 
       document.addEventListener('mousemove', function (e) {
@@ -88,7 +103,18 @@
     window.addEventListener('load', deferInit);
   }
 
-  window.addEventListener('resize', () => {
+  // Re-init on theme switch so the gradient texture updates
+  var themeObserver = new MutationObserver(function () {
+    if (ripples) {
+      setTimeout(function () {
+        ripples.imageUrl = getGradientDataUrl();
+        ripples.loadImage();
+      }, 50);
+    }
+  });
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  window.addEventListener('resize', function () {
     if (ripples) ripples.updateSize();
   });
 })();
