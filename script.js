@@ -36,17 +36,38 @@
 
   let ripples;
 
-  function getGradientDataUrl() {
-    var cs = getComputedStyle(overlay);
+  function splitGradients(str) {
+    var parts = [], depth = 0, current = '';
+    for (var i = 0; i < str.length; i++) {
+      var ch = str[i];
+      if (ch === '(') depth++;
+      else if (ch === ')') depth--;
+      if (ch === ',' && depth === 0) { parts.push(current.trim()); current = ''; }
+      else current += ch;
+    }
+    if (current.trim()) parts.push(current.trim());
+    return parts;
+  }
+
+  function getGradientDataUrl(forceElement) {
+    var el = forceElement || overlay;
+    var savedInline = el.style.backgroundImage;
+    if (savedInline) el.style.backgroundImage = '';
+    var cs = getComputedStyle(el);
     var bg = cs.backgroundImage;
-    var w = overlay.offsetWidth;
-    var h = overlay.offsetHeight;
+    var w = el.offsetWidth;
+    var h = el.offsetHeight;
+    if (savedInline) el.style.backgroundImage = savedInline;
     if (!bg || bg === 'none' || !w || !h) return null;
+    var parts = splitGradients(bg);
+    if (parts.length === 0) return null;
     var c = document.createElement('canvas');
     c.width = w; c.height = h;
     var ctx = c.getContext('2d');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, w, h);
+    for (var i = parts.length - 1; i >= 0; i--) {
+      ctx.fillStyle = parts[i];
+      ctx.fillRect(0, 0, w, h);
+    }
     return c.toDataURL();
   }
 
