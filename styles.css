@@ -14,7 +14,7 @@
   --card-shadow-hover: 0 16px 48px rgba(2,6,23,0.16);
 }
 *{box-sizing:border-box}
-body{font-family: "Segoe UI","Noto Sans CJK SC","Microsoft YaHei",sans-serif;margin:0;background:transparent;color:var(--fg);line-height:1.6;overflow-x:hidden}
+body{font-family: "Segoe UI","Noto Sans CJK SC","Microsoft YaHei",sans-serif;margin:0;background:var(--bg);color:var(--fg);line-height:1.6;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative}
 
 /* --- 视频背景 --- */
 .bg-video {
@@ -26,6 +26,7 @@ body{font-family: "Segoe UI","Noto Sans CJK SC","Microsoft YaHei",sans-serif;mar
   z-index: -2;
   pointer-events: none;
   transition: opacity 1s ease;
+  background: transparent;
 }
 #bg-video-dark { opacity: 0; }
 
@@ -246,7 +247,7 @@ code { font-family: var(--mono); font-size: .88em; }
 }
 
 /* --- Header --- */
-.hero-header{background:var(--hdr-bg);backdrop-filter:blur(6px);position:sticky;top:0;z-index:40;border-bottom:1px solid var(--border-color)}
+.hero-header{background:var(--hdr-bg);backdrop-filter:blur(6px);position:sticky;top:0;left:0;right:0;z-index:40;border-bottom:1px solid var(--border-color)}
 .hero-header .hero-inner{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1rem}
 .brand a{font-weight:700;color:var(--fg);text-decoration:none;font-size:1.05rem}
 .main-nav{display:flex;align-items:center;gap:1.5rem}
@@ -276,6 +277,7 @@ code { font-family: var(--mono); font-size: .88em; }
 .slide-section {
   position: relative;
   min-height: 180vh;
+  overflow: hidden;
 }
 .slide-section[data-slide="hero"] { min-height: 200vh; }
 .slide-section[data-slide="ending"] { min-height: 100vh; }
@@ -406,9 +408,9 @@ code { font-family: var(--mono); font-size: .88em; }
 
 /* --- Mobile: vertical card stack + fade animation --- */
 @media (max-width: 768px){
-  .slide-section { min-height: 100vh; }
-  .slide-section[data-slide="hero"] { min-height: 60vh; padding-top: 3rem; }
-  .slide-section[data-slide="ending"] { min-height: 40vh; }
+  .slide-section { min-height: 100vh; min-height: 100dvh; }
+  .slide-section[data-slide="hero"] { min-height: 60vh; min-height: 60dvh; padding-top: 3rem; }
+  .slide-section[data-slide="ending"] { min-height: 40vh; min-height: 40dvh; }
   .slide-scroll { position: relative; top: auto; height: auto; }
   .hero-title {
     font-size: 1.35rem; word-break: break-word; padding: 0 .4rem;
