@@ -68,7 +68,7 @@ export default function Header() {
         <div className="brand">
           <img 
             className="brand-icon" 
-            src="/icon.png"
+            src="/assets/images/icon.png"
             alt="LaTeXSnipper"
           />
           <a href="index.html">LaTeXSnipper</a>
@@ -84,7 +84,7 @@ export default function Header() {
             <option value="warm">暖色系</option>
             <option value="minimal">极简灰度</option>
           </select>
-          <a href="user_manual.html">用户手册</a>
+          <a href="manual.html">用户手册</a>
           <a href="https://github.com/SakuraMathcraft/LaTeXSnipper" target="_blank" rel="noopener">GitHub</a>
           <button 
             className="theme-toggle" 

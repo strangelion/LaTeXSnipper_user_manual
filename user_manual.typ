@@ -106,7 +106,7 @@
 
 // ── 封面图 ──
 #align(center)[
-  #image("LaTeXSnipper.png", width: 100%)
+  #image("assets/images/LaTeXSnipper.png", width: 100%)
   #v(1em)
 ]
 
