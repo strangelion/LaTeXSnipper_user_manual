@@ -13,56 +13,56 @@ const CARDS = [
   {
     id: 'card-0',
     title: '截取识别',
-    brief: '全局热键截图，本地 ONNX 模型离线识别公式。',
-    detail: '按下全局热键（默认 Ctrl+F）或托盘菜单触发，打开全屏截图蒙层（ScreenshotOverlay），框选公式区域后由内置 MathCraft ONNX 引擎在本地完成 OCR 识别，无需上传任何数据到云端。支持印刷公式、手写体、图片内嵌公式等多场景，支持混合排版识别（公式 + 中文文本）。识别结果自动弹出可固定的紧凑结果对话框，支持直接编辑和写回主编辑器。也支持图片/PDF 文件拖入触发识别。'
+    brief: '按快捷键截图，自动识别公式，全程离线。',
+    detail: '按下快捷键（默认 Ctrl+F）或右键托盘图标，屏幕会变暗出现截图框，选中公式区域后松开，软件自动识别出 LaTeX 代码。识别全程在电脑本地完成，不需要联网，不用担心隐私泄露。支持印刷体公式、手写公式、图片里的公式，甚至能同时识别公式和旁边的中文文字。识别结果会弹出小窗口显示，可以直接修改或插入到编辑器。也支持直接把图片或 PDF 文件拖进窗口识别。'
   },
   {
     id: 'card-1',
     title: '数学工作台',
-    brief: 'SymPy 符号计算引擎，嵌入 QWebEngineView 的交互式工作台。',
-    detail: 'v2.0 数学工作台基于 SymPy 引擎，通过 WebChannel 与前端交互，支持求值（evaluate）、化简（simplify）、展开（expand）、因式分解（factor）、求解方程（solve）、数值化（numeric / N()）六种运算。内置 MathJSON ↔ LaTeX 互转器（MathJsonConverter），支持多行排版环境（displaylines / multline / align）。LaTeX 代码片段面板提供分式、上下标、根号、求和、积分、矩阵等常用模板，同时支持 LaTeX 和 Typst 两种语法。示例公式一键加载，计算结果可直接写回主编辑器或复制为 LaTeX / MathJSON。'
+    brief: '一个能算数学题的编辑窗口，化简、求解、展开都能做。',
+    detail: '数学工作台可以帮你处理数学表达式：求值、化简、展开、因式分解、解方程、转成小数，六种常用功能一键调用。内置常用符号面板，分式、根号、求和、积分、矩阵等模板一插即用，支持 LaTeX 和 Typst 两种写法。算好的结果可以直接插入到主编辑器或复制出来用。'
   },
   {
     id: 'card-2',
     title: '手写识别',
-    brief: '独立画布手写输入，抬笔自动识别，实时 MathJax 预览。',
-    detail: 'v2.1 手写识别窗口（HandwritingWindow）左侧为 InkCanvas 自定义画布，支持鼠标和触控笔输入，三种绘图工具：书写（WRITE）、橡皮（ERASE，像素级擦除）、圈选修正（SELECT_CORRECT，框内保留笔段）。Ctrl+滚轮缩放（0.3×–2.2×），右键拖拽平移。停笔后通过后台线程送入 MathCraft 模型或外部 API 识别，结果回显到编辑器并触发 MathJax 3 实时预览（tex-mml-chtml.js）。内置自动排版引擎：空间聚类分组为行 → 行间距分析分割段落 → 行特征分类（标题/列表/正文）→ 格式化为纯文本文章。'
+    brief: '鼠标或触控笔写公式，松手自动识别。',
+    detail: '打开"手写识别"后，左侧是手写板，可以用鼠标或触控笔直接写公式。支持三种工具：笔（正常书写）、橡皮（擦除写错的部分）、圈选修正（圈出要修改的区域）。写完后停笔稍等，软件自动识别成 LaTeX，右侧实时显示预览效果。还可以自动排版——把多行手写内容按段落整理成一篇完整的文章。'
   },
   {
     id: 'card-3',
     title: '自动排版文档',
-    brief: 'LaTeX 源码编辑器 + 代码片段插入 + 文档结构校验。',
-    detail: '文档排版预览窗口（DocumentPreviewWindow）提供 SlowZoomPlainTextEdit 源码编辑器，支持行号显示、Ctrl+滚轮缩放、当前行高亮。内置代码片段面板可插入分式、上下标、根号、求和、积分、矩阵等 LaTeX 模板。文档封装（wrap_tex_document）支持 equation / align / gather / multline 等环境，document 结构校验（validate_tex_document）确保完整性。完成编辑后可导出 .tex 或编译为 PDF。'
+    brief: '完整的 LaTeX 编辑环境，写文档、插公式、导出一条龙。',
+    detail: '从手写窗口可以打开自动排版功能，进入一个完整的 LaTeX 编辑器。左侧编辑源码，支持显示行号、缩放、当前行高亮。右侧可以直接插入分式、上下标、根号、求和、积分、矩阵等常见公式模板。编辑完成后可以导出为 .tex 文件或编译成 PDF。'
   },
   {
     id: 'card-4',
     title: '多格式导出',
-    brief: '内置 + Pandoc 扩展共 30+ 导出格式，覆盖主流出版格式。',
-    detail: '主窗口和收藏窗口共享统一导出菜单。内置格式：LaTeX 行内（$…$）、LaTeX display（\\[…\\]）、LaTeX equation（带编号）、Markdown 行内和块级、MathML 标准 / .mml / <m> / 属性形式、HTML、Word OMML（通过 MML2OMML.XSL 转换）、SVG 代码。通过 Pandoc 可选导出：Word .docx、ODT、EPUB、InDesign .icml、RTF、独立 HTML、LaTeX .tex、Typst .typ、GitHub Markdown（GFM）、CommonMark、reStructuredText、MediaWiki、DokuWiki、Org-mode、Textile、Jira Wiki、Man Page、纯文本。导出流水线：LaTeX → latex2mathml 生成 MathML → 可选 Pandoc 转换 → 目标格式。'
+    brief: '30 多种导出格式，复制粘贴就能用。',
+    detail: '识别出的公式可以导出为各种格式。常用的有：LaTeX（行内/展示/带编号）、Markdown（行内/块级）、MathML、HTML、Word 公式、SVG 图片等。如果安装了 Pandoc，还能导出 Word 文档、EPUB 电子书、Typst、GitHub Markdown、Wiki 语法等 20 多种格式。不管是写论文、做博客、写书，总有一种格式适合你。'
   },
   {
     id: 'card-5',
     title: '本地模型',
-    brief: 'MathCraft ONNX 五模型引擎，离线高精度公式识别。',
-    detail: '独立包 mathcraft_ocr/ 实现，基于 ONNX Runtime 推理，不依赖 PyTorch。内置五个 ONNX 模型：mathcraft-formula-det（公式检测）、mathcraft-formula-rec（公式识别，encoder-decoder 架构）、mathcraft-text-det（中文文本检测，PP-OCRv5）、mathcraft-text-rec（中文文本识别，PP-OCRv5）、mathcraft-text-det-lite-en / mathcraft-text-rec-lite-en（英文轻量备选）。支持 formula（仅公式）和 mixed（公式 + 中文文本混合排版）两种运行时配置。进程级 ONNX session 缓存，JSONL 常驻工作进程，完整 CLI 和 doctor 诊断工具。最大输入 2400px 边限 / 400 万像素。'
+    brief: '内置强大识别引擎，不联网也能用。',
+    detail: 'LaTeXSnipper 内置了一套完整的离线识别引擎，包含五个专用模型：检测公式位置、识别公式内容、识别中英文文字。支持纯公式识别和图文混合识别两种模式。首次使用会自动下载模型，之后全程离线运行，速度快、零延迟。还有命令行工具和诊断工具，方便高级用户排查问题。'
   },
   {
     id: 'card-6',
     title: '外部模型',
-    brief: '可配置 API 接入，支持任意远程识别引擎。',
-    detail: '通过 ExternalModelClient 调用远程 API，设置中可配置 API URL、API Key、提示词模板（Prompt Template）和输出模式，灵活对接 Mathpix、SimpleTex 等任意第三方公式识别服务，满足不同精度和使用场景需求。'
+    brief: '想用云端 API 也可以，灵活切换。',
+    detail: '如果想要更高的识别精度，也可以在设置里配置第三方云端识别服务，比如 Mathpix、SimpleTex 等。填入接口地址和密钥就能用，随时可以切换回本地模型，非常灵活。'
   },
   {
     id: 'card-7',
     title: '多平台',
-    brief: 'Windows / Linux / macOS 三平台原生体验。',
-    detail: '全面支持 Windows、Linux、macOS 三大桌面平台，各平台独立 PyInstaller 打包配置（三个 .spec 文件）。Windows 为主力平台，支持 Inno Setup 安装程序打包和 Microsoft Store MSIX 分发；Linux 通过 Debian 包（packaging/debian/）分发，Qt overlay 截图为截图主力，Wayland/X11 CLI 工具为备选；macOS 通过 .dmg 构建脚本分发，兼容原生截图备选方案。所有平台共享同一套 Fluent Design 风格 UI（PyQt6 + qfluentwidgets），体验一致。内置平台能力注册（PlatformCapabilityRegistry）统一热键、截图、系统服务、托盘菜单接口。'
+    brief: 'Windows / Linux / macOS 都能用。',
+    detail: 'LaTeXSnipper 支持三大桌面系统。Windows 上可以用安装包或 Microsoft Store 安装；Linux 上提供 Deb 包；macOS 上用 DMG 镜像安装。三个平台的界面和操作方式完全一致，都是现代化的 Fluent Design 风格。不管用什么系统，体验都一样好。'
   },
   {
     id: 'card-8',
     title: '双语 PDF 翻译',
-    brief: '基于 Argos Translate 的离线 PDF 原文/译文对照翻译。',
-    detail: '双语 PDF 翻译窗口（BilingualPdfWindow）通过子进程启动独立的 Argos Translate 离线神经机器翻译引擎，支持 PDF 页面原文与译文分栏对比查看。使用 fitz（PyMuPDF）或 poppler 作为 PDF 渲染引擎，离线翻译无需联网，保护文档隐私安全。'
+    brief: '离线翻译 PDF，原文译文对照看。',
+    detail: '内置 PDF 翻译功能，选中 PDF 后可以一边看原文、一边看译文，左右对照。翻译在本地完成，不需要联网，不用担心文档内容泄露。支持选页翻译，也支持整篇翻译。'
   }
 ]
 
