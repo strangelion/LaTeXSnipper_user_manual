@@ -50,7 +50,7 @@ const CARDS = [
     id: 'card-6',
     title: '外部模型',
     brief: '想用云端 API 也可以，灵活切换。',
-    detail: '如果想要更高的识别精度，也可以在设置里配置第三方云端识别服务，比如 Mathpix、SimpleTex 等。填入接口地址和密钥就能用，随时可以切换回本地模型，非常灵活。'
+    detail: '如果想要更高的识别精度，也可以在设置里配置第三方云端识别服务，比如 MinerU , Ollama , OpenAl-compatible 等。填入接口地址和密钥就能用，随时可以切换回本地模型，非常灵活。'
   },
   {
     id: 'card-7',
