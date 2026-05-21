@@ -77,7 +77,7 @@ export default {
 
     let filePath;
     if (path === "/") {
-      filePath = site === "help" ? "user_manual.html" : "dist/index.html";
+      filePath = site === "help" ? "manual.html" : "dist/index.html";
     } else {
       const ext = path.split(".").pop() || "";
       const hasExt = /^[a-zA-Z0-9]+$/.test(ext) && ext.length <= 10;

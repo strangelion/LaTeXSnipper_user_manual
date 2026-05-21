@@ -19,3 +19,10 @@ pnpm-debug.log*
 .mypy_cache/
 .wrangler/
 tinymist.lock
+dist/
+node_modules/
+user_manual.md
+user_manual.pdf
+npm-debug.log*
+
+

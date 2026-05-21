@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5">
+  <title>LaTeXSnipper 用户手册</title>
+  <link rel="icon" type="image/png" href="assets/images/icon.png">
+  <script>
+    try { var s = localStorage.getItem('latexSnipper-theme'); if (s === 'dark' || s === 'light') document.documentElement.setAttribute('data-theme', s); } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="styles/styles.css">
+  <style>
+    .spacer-top { height: 60px; }
+    .top-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: var(--hdr-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-color); }
+    .top-nav .inner { max-width: var(--max-w); margin: 0 auto; padding: 0 1.25rem; height: 48px; display: flex; align-items: center; gap: 1rem; }
+    .top-nav a { color: var(--fg); text-decoration: none; font-size: 0.9rem; }
+    .top-nav a:hover { color: var(--accent); }
+    .top-nav .brand-link { font-weight: 700; font-size: 1rem; }
+    .theme-toggle { margin-left: auto; background: none; border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 1.15rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+    .theme-toggle:hover { background: rgba(128,128,128,0.1); }
+    .manual-wrapper { max-width: var(--max-w); margin: 0 auto; padding: 1rem 1.25rem 4rem; }
+    .status-box { text-align: center; padding: 80px 20px; color: var(--muted); font-size: 1.1rem; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border-color); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-box { text-align: center; padding: 60px 20px; font-size: 1rem; }
+    .error-box .err-msg { color: var(--red, #C62828); }
+    .error-box .err-detail { color: var(--muted); font-size: 0.85rem; margin-top: 0.5rem; word-break: break-all; }
+    #output svg { width: 100%; height: auto; }
+    .fallback-link { margin-top: 1.5rem; display: inline-block; }
+  </style>
+</head>
+<body class="manual">
+  <nav class="top-nav">
+    <div class="inner">
+      <a href="index.html" class="brand-link">LaTeXSnipper</a>
+      <a href="index.html">主页</a>
+      <a href="https://github.com/SakuraMathcraft/LaTeXSnipper" target="_blank" rel="noopener">GitHub 仓库</a>
+      <button class="theme-toggle" id="themeToggle" title="切换日/夜模式">🌙</button>
+    </div>
+  </nav>
+  <div class="spacer-top"></div>
+
+  <div class="manual-wrapper">
+    <div id="status-box" class="status-box">
+      <div class="spinner"></div>
+      <p id="status-text">正在加载渲染引擎…</p>
+      <p style="font-size:0.8rem;margin-top:0.5rem;opacity:0.6">首次加载约需 3–5 秒（WASM 编译）</p>
+    </div>
+    <div id="output"></div>
+  </div>
+
+  <!-- 用 type="module" 的 import 方式替代 script src，避免 load 事件不可靠 -->
+  <script type="module">
+    import * as Typst from 'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst.ts/dist/esm/contrib/all-in-one-lite.bundle.js';
+
+    var $typst = Typst.$typst;
+    var TypstSnippet = Typst.TypstSnippet;
+    var output = document.getElementById('output');
+    var statusBox = document.getElementById('status-box');
+    var statusText = document.getElementById('status-text');
+
+    function showStatus(t) { statusText.textContent = t; }
+    function hideStatus() { statusBox.style.display = 'none'; }
+
+    function showError(msg, detail) {
+      statusBox.className = 'error-box';
+      statusBox.innerHTML = '<p class="err-msg">' + msg + '</p>' +
+        (detail ? '<p class="err-detail">' + detail + '</p>' : '') +
+        '<a class="fallback-link" href="user_manual.html">← 查看 HTML 版本</a>';
+    }
+
+    // 主题切换
+    (function () {
+      var t = document.getElementById('themeToggle');
+      if (!t) return;
+      function u() {
+        var a = document.documentElement.getAttribute('data-theme');
+        var d = a === 'dark' || (!a && matchMedia('(prefers-color-scheme:dark)').matches);
+        t.textContent = d ? '☀️' : '🌙';
+      }
+      u();
+      t.addEventListener('click', function () {
+        var r = document.documentElement;
+        var c = r.getAttribute('data-theme');
+        var n = c === 'dark' ? 'light' : 'dark';
+        r.setAttribute('data-theme', n);
+        try { localStorage.setItem('latexSnipper-theme', n); } catch (e) {}
+        u();
+      });
+      matchMedia('(prefers-color-scheme:dark)').addEventListener('change', u);
+    })();
+
+    // ── 超时包装 ──
+    function withTimeout(promise, ms, label) {
+      return Promise.race([
+        promise,
+        new Promise(function (_, reject) {
+          setTimeout(function () { reject(new Error('超时（' + label + '，' + (ms/1000) + 's）')); }, ms);
+        })
+      ]);
+    }
+
+    // ── 主渲染流程 ──
+    (async function () {
+      try {
+        // 1. 配置 WASM
+        showStatus('正在加载编译引擎…');
+        $typst.setCompilerInitOptions({
+          getModule: function () { return 'wasm/typst_ts_web_compiler_bg.wasm'; },
+        });
+        $typst.setRendererInitOptions({
+          getModule: function () { return 'wasm/typst_ts_renderer_bg.wasm'; },
+        });
+
+        // 2. 加载字体 + 获取所有文件
+        showStatus('正在加载字体与手册内容…');
+        var IMAGE_FILES = [
+          'assets/images/LaTeXSnipper.png',
+          'assets/images/mathcraft_abstract_algebra.png',
+          'assets/images/mathcraft_dynamics_journal.png',
+          'assets/images/mathcraft_chinese_lecture.png',
+          'assets/images/mathcraft_limits_series.png'
+        ];
+        var FONT_FILES = [
+          'NotoSerifCJKsc-Regular.otf'
+        ];
+        var fetches = IMAGE_FILES.map(function (f) {
+          return fetch(f).then(function (r) { return r.arrayBuffer(); }).catch(function () { return null; });
+        });
+        var fontFetches = FONT_FILES.map(function (f) {
+          return fetch('/fonts/' + f).then(function (r) { return r.arrayBuffer(); });
+        });
+        var results = await withTimeout(Promise.all([
+          fetch('user_manual.typ').then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); }),
+          Promise.all(fetches),
+          Promise.all(fontFetches),
+        ]), 30000, '加载');
+        var typSource = results[0];
+        var allImages = results[1];
+        var allFontData = results[2];
+
+        // 3. 直接通过二进制数据注册字体（不依赖 CDN 路径解析）
+        showStatus('正在注册字体…');
+        var fontSnippets = allFontData.map(function (f) {
+          return TypstSnippet.preloadFontData(new Uint8Array(f));
+        });
+        await $typst.use.apply($typst, fontSnippets);
+        console.log('[manual] ' + FONT_FILES.length + ' 个字体已注册');
+
+        // 4. 统一图片路径前缀 + 注入虚拟文件系统
+        typSource = typSource.replace(
+          /#image\("mathcraft_([^"]+)\.png"[^)]*\)/g,
+          '#image("assets/images/mathcraft_$1.png", width: 100%)'
+        );
+        for (var idx = 0; idx < IMAGE_FILES.length; idx++) {
+          if (allImages[idx]) {
+            await $typst.mapShadow('/tmp/' + IMAGE_FILES[idx], new Uint8Array(allImages[idx]));
+          }
+        }
+        console.log('[manual] ' + IMAGE_FILES.length + ' 张图片已注入');
+
+        // 字体列表使用实际注册了的 Family Name
+        typSource = typSource.replace(
+          /font: \("Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", "SimHei", "Noto Sans", "Helvetica"\)/,
+          'font: ("Noto Serif CJK SC", "DejaVu Sans Mono", "Libertinus Serif")'
+        );
+        console.log('[manual] 字体名已替换');
+
+        // 4. 测试编译器 — 先试一段极简 Typst，排除编译器问题
+        showStatus('正在验证编译器…');
+        console.log('[manual] 测试编译器…');
+        try {
+          await withTimeout($typst.svg({ mainContent: 'Hello' }), 15000, '测试');
+          console.log('[manual] 测试通过 ✅');
+        } catch (e) {
+          console.warn('[manual] 测试失败:', e);
+          showError('渲染引擎不兼容', 'Typst 编译器测试失败：' + (e.message || e) +
+            '<br><br>请 <a href="user_manual.html">查看 HTML 版本</a>。');
+          return;
+        }
+
+        // 4. 编译完整文档
+        showStatus('正在编译 & 渲染…');
+        var svg = await withTimeout($typst.svg({ mainContent: typSource }), 120000, '文档');
+
+        hideStatus();
+        output.innerHTML = svg;
+        console.log('[manual] 渲染完成 ✅');
+      } catch (err) {
+        console.error('[manual] 失败:', err);
+        var m = err.message || err;
+        if (m.indexOf('超时') !== -1) {
+          showError('编译超时', m + '<br><br>文档过大，请 <a href="user_manual.html">查看 HTML 版本</a>。');
+        } else {
+          showError('渲染失败', m + '<br><br>请 <a href="user_manual.html">查看 HTML 版本</a>。');
+        }
+      }
+    })();
+  </script>
+</body>
+</html>
