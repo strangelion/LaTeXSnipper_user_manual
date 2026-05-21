@@ -51,11 +51,9 @@
   }
 
   // 初始化：两个视频都开始播放（静音自动播放）
+  // 不调用 updateVideoVisibility()，让 CSS 控制初始状态
   lightVideo.play().catch(e => console.warn('[Video] lightVideo play 失败:', e.message));
   darkVideo.play().catch(e => console.warn('[Video] darkVideo play 失败:', e.message));
-  
-  // 设置初始可见性
-  updateVideoVisibility();
 
   // 监听主题变化
   const observer = new MutationObserver(updateVideoVisibility);
