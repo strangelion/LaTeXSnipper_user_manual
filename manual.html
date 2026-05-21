@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5">
+  <title>LaTeXSnipper 用户手册</title>
+  <link rel="icon" type="image/png" href="assets/images/icon.png">
+  <script>
+    try { var s = localStorage.getItem('latexSnipper-theme'); if (s === 'dark' || s === 'light') document.documentElement.setAttribute('data-theme', s); } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="styles/styles.css">
+  <style>
+    .spacer-top { height: 60px; }
+    .top-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: var(--hdr-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-color); }
+    .top-nav .inner { max-width: var(--max-w); margin: 0 auto; padding: 0 1.25rem; height: 48px; display: flex; align-items: center; gap: 1rem; }
+    .top-nav a { color: var(--fg); text-decoration: none; font-size: 0.9rem; }
+    .top-nav a:hover { color: var(--accent); }
+    .top-nav .brand-link { font-weight: 700; font-size: 1rem; }
+    .theme-toggle { margin-left: auto; background: none; border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 1.15rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+    .theme-toggle:hover { background: rgba(128,128,128,0.1); }
+    .manual-wrapper { max-width: var(--max-w); margin: 0 auto; padding: 1rem 1.25rem 4rem; }
+    .status-box { text-align: center; padding: 80px 20px; color: var(--muted); font-size: 1.1rem; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border-color); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-box { text-align: center; padding: 60px 20px; font-size: 1rem; }
+    .error-box .err-msg { color: var(--red, #C62828); }
+    .error-box .err-detail { color: var(--muted); font-size: 0.85rem; margin-top: 0.5rem; word-break: break-all; }
+    #output svg { width: 100%; height: auto; display: block; margin: 0 !important; padding: 0 !important; border: none; }
+    /* 去掉 SVG 之间的所有可能间距 */
+    #output svg + svg { margin-top: 0 !important; padding-top: 0 !important; }
+    /* 暗色模式：将 SVG 黑色文字反转为白色 */
+    :root[data-theme="dark"] #output svg { filter: invert(0.88) hue-rotate(180deg); }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) #output svg { filter: invert(0.88) hue-rotate(180deg); }
+    }
+    .fallback-link { margin-top: 1.5rem; display: inline-block; }
+
+    /* ── 回到顶部按钮 ── */
+    .back-to-top {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: var(--accent, #3b82f6);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.35s ease, visibility 0.35s ease, transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease;
+      z-index: 1000;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .back-to-top .btt-icon {
+      width: 18px;
+      height: 18px;
+      transition: transform 0.3s ease;
+    }
+    .back-to-top:hover .btt-icon { transform: translateY(-2px); }
+    .back-to-top.visible { opacity: 1; visibility: visible; }
+    .back-to-top:hover { transform: scale(1.12); box-shadow: 0 6px 24px rgba(0,0,0,0.28); }
+    .back-to-top:active { transform: scale(0.95); }
+    .back-to-top.faded { opacity: 0.3; }
+    .back-to-top.faded:hover { opacity: 1; transform: scale(1.12); }
+
+    @media (max-width: 600px) {
+      .back-to-top { width: 36px; height: 36px; bottom: 1.2rem; right: 1.2rem; }
+    }
+  </style>
+</head>
+<body class="manual">
+  <nav class="top-nav">
+    <div class="inner">
+      <a href="index.html" class="brand-link">LaTeXSnipper</a>
+      <a href="index.html">主页</a>
+      <a href="https://github.com/SakuraMathcraft/LaTeXSnipper" target="_blank" rel="noopener">GitHub 仓库</a>
+      <button class="theme-toggle" id="themeToggle" title="切换日/夜模式">🌙</button>
+    </div>
+  </nav>
+  <div class="spacer-top"></div>
+
+  <div class="manual-wrapper">
+    <div id="status-box" class="status-box">
+      <div class="spinner"></div>
+      <p id="status-text">正在加载渲染引擎…</p>
+      <p style="font-size:0.8rem;margin-top:0.5rem;opacity:0.6">首次加载约需 3–5 秒（WASM 编译）</p>
+    </div>
+    <div id="output"></div>
+  </div>
+
+  <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
+    <svg class="btt-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 19V5" />
+      <path d="M5 12l7-7 7 7" />
+    </svg>
+  </button>
+
+  <!-- 用 type="module" 的 import 方式替代 script src，避免 load 事件不可靠 -->
+  <script type="module">
+    import * as Typst from 'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst.ts/dist/esm/contrib/all-in-one-lite.bundle.js';
+
+    var $typst = Typst.$typst;
+    var TypstSnippet = Typst.TypstSnippet;
+    var output = document.getElementById('output');
+    var statusBox = document.getElementById('status-box');
+    var statusText = document.getElementById('status-text');
+
+    function showStatus(t) { statusText.textContent = t; }
+    function hideStatus() { statusBox.style.display = 'none'; }
+
+    function showError(msg, detail) {
+      statusBox.className = 'error-box';
+      statusBox.innerHTML = '<p class="err-msg">' + msg + '</p>' +
+        (detail ? '<p class="err-detail">' + detail + '</p>' : '') +
+        '<a class="fallback-link" href="user_manual.html">← 查看 HTML 版本</a>';
+    }
+
+    // 主题切换
+    (function () {
+      var t = document.getElementById('themeToggle');
+      if (!t) return;
+      function u() {
+        var a = document.documentElement.getAttribute('data-theme');
+        var d = a === 'dark' || (!a && matchMedia('(prefers-color-scheme:dark)').matches);
+        t.textContent = d ? '☀️' : '🌙';
+      }
+      u();
+      t.addEventListener('click', function () {
+        var r = document.documentElement;
+        var c = r.getAttribute('data-theme');
+        var n = c === 'dark' ? 'light' : 'dark';
+        r.setAttribute('data-theme', n);
+        try { localStorage.setItem('latexSnipper-theme', n); } catch (e) {}
+        u();
+      });
+      matchMedia('(prefers-color-scheme:dark)').addEventListener('change', u);
+    })();
+
+    // ── 超时包装 ──
+    function withTimeout(promise, ms, label) {
+      return Promise.race([
+        promise,
+        new Promise(function (_, reject) {
+          setTimeout(function () { reject(new Error('超时（' + label + '，' + (ms/1000) + 's）')); }, ms);
+        })
+      ]);
+    }
+
+    // ── 主渲染流程 ──
+    (async function () {
+      try {
+        // 1. 配置 WASM
+        showStatus('正在加载编译引擎…');
+        $typst.setCompilerInitOptions({
+          getModule: function () { return 'wasm/typst_ts_web_compiler_bg.wasm'; },
+        });
+        $typst.setRendererInitOptions({
+          getModule: function () { return 'wasm/typst_ts_renderer_bg.wasm'; },
+        });
+
+        // 1.5 加载中文字体（CJK）— 使用开源中文字体 Noto Serif CJK SC（SIL OFL 许可证）
+        showStatus('正在加载中文字体…');
+        $typst.use(TypstSnippet.preloadFontFromUrl('fonts/NotoSerifCJKsc-Regular.otf'));
+        console.log('[manual] 字体已注册 ✅');
+
+        // 2. 获取 typ 源文件 + 图片
+        showStatus('正在获取手册内容…');
+        var IMAGE_FILES = [
+          'assets/images/LaTeXSnipper.png',
+          'assets/images/mathcraft_abstract_algebra.png',
+          'assets/images/mathcraft_dynamics_journal.png',
+          'assets/images/mathcraft_chinese_lecture.png',
+          'assets/images/mathcraft_limits_series.png'
+        ];
+        var fetches = IMAGE_FILES.map(function (f) {
+          return fetch(f).then(function (r) { return r.arrayBuffer(); }).catch(function () { return null; });
+        });
+        var results = await withTimeout(Promise.all([
+          fetch('user_manual.typ').then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); }),
+          Promise.all(fetches),
+        ]), 30000, '加载');
+        var typSource = results[0];
+        var allImages = results[1];
+
+        // 3. 预处理 typ 源码：去分页 + A4边距 + 替换字体为 Noto Sans SC
+        typSource = typSource
+          // 移除 #pagebreak()
+          .replace(/#pagebreak\(\)/g, '')
+          // 替换 A4 纸张 + 大边距 为连续无边距
+          .replace(
+            /#set page\(paper:\s*"a4",\s*margin:\s*\(left:\s*2cm,[^)]+\)\s*\)/,
+            '#set page(margin: (x: 0pt, y: 8pt))'
+          )
+          // 替换字体列表为 Noto Serif CJK SC（简洁，仅保留我们加载的字体）
+          .replace(
+            /font:\s*\([^)]+\)/,
+            'font: ("Noto Serif CJK SC", "Noto Sans CJK SC", "Source Han Sans SC")'
+          );
+
+        // 4. 统一图片路径 + 注入
+        typSource = typSource.replace(
+          /#image\("mathcraft_([^"]+)\.png"[^)]*\)/g,
+          '#image("assets/images/mathcraft_$1.png", width: 100%)'
+        );
+        for (var idx = 0; idx < IMAGE_FILES.length; idx++) {
+          if (allImages[idx]) {
+            await $typst.mapShadow('/tmp/' + IMAGE_FILES[idx], new Uint8Array(allImages[idx]));
+          }
+        }
+        console.log('[manual] 图片已注入');
+
+        // 5. 测试 + 编译
+        showStatus('正在验证编译器…');
+        await withTimeout($typst.svg({ mainContent: 'Hello' }), 15000, '测试');
+        console.log('[manual] 测试通过 ✅');
+
+        showStatus('正在编译 & 渲染…');
+        var svg = await withTimeout($typst.svg({ mainContent: typSource }), 120000, '文档');
+
+        hideStatus();
+        output.innerHTML = svg;
+
+        // 6. 激活 SVG 内部链接导航（innerHTML 不会执行 SVG 内嵌脚本）
+        var svgEl = output.querySelector('svg');
+        if (svgEl) {
+          var svgScript = svgEl.querySelector('script');
+          if (svgScript) {
+            // 提取脚本内容并通过新建 script 标签执行
+            var scriptContent = svgScript.textContent;
+            svgScript.remove();
+            var newScript = document.createElement('script');
+            newScript.textContent = scriptContent;
+            document.body.appendChild(newScript);
+            // 手动触发 typstProcessSvg，因为原脚本中的 document.currentScript 已失效
+            if (typeof window.typstProcessSvg === 'function') {
+              window.typstProcessSvg(svgEl);
+            }
+            console.log('[manual] SVG 内部链接已激活 ✅');
+          }
+        }
+        console.log('[manual] 渲染完成 ✅');
+
+        // 7. 移除旧的覆盖层（如果有），恢复 SVG 文本选择
+        var oldOverlay = document.querySelector('.code-copy-overlay');
+        if (oldOverlay) oldOverlay.remove();
+      } catch (err) {
+        console.error('[manual] 失败:', err);
+        var m = err.message || err;
+        if (m.indexOf('超时') !== -1) {
+          showError('编译超时', m + '<br><br>文档过大，请 <a href="user_manual.html">查看 HTML 版本</a>。');
+        } else {
+          showError('渲染失败', m + '<br><br>请 <a href="user_manual.html">查看 HTML 版本</a>。');
+        }
+      }
+    })();
+
+    // ── 回到顶部按钮 ──
+    (function () {
+      var btn = document.getElementById('backToTop');
+      if (!btn) return;
+      var fadeTimer = null;
+      var FADE_DELAY = 4000;
+      function resetFade() {
+        if (fadeTimer) { clearTimeout(fadeTimer); fadeTimer = null; }
+        btn.classList.remove('faded');
+        fadeTimer = setTimeout(function () { btn.classList.add('faded'); }, FADE_DELAY);
+      }
+      function handleScroll() {
+        if (window.scrollY > 400) {
+          btn.classList.add('visible');
+          resetFade();
+        } else {
+          btn.classList.remove('visible', 'faded');
+          if (fadeTimer) { clearTimeout(fadeTimer); fadeTimer = null; }
+        }
+      }
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      btn.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+      btn.addEventListener('mouseenter', function () {
+        btn.classList.remove('faded');
+        if (fadeTimer) { clearTimeout(fadeTimer); fadeTimer = null; }
+      });
+      btn.addEventListener('mouseleave', function () {
+        if (btn.classList.contains('visible')) resetFade();
+      });
+    })();
+  </script>
+</body>
+</html>
