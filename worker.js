@@ -124,9 +124,9 @@ export default {
       return new Response(videoResp.body, { status: 200, headers });
     }
 
-    // favicon 返回 icon.png
+    // favicon 返回 icon.png（从 public/ 目录获取）
     if (filePath.endsWith(".ico")) {
-      const pngUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/icon.png`;
+      const pngUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/public/icon.png`;
       const icoResp = await fetch(pngUrl);
       if (!icoResp.ok) {
         return new Response(null, { status: 204, headers: corsHeaders() });
