@@ -125,6 +125,27 @@ export default {
       return new Response(videoResp.body, { status: 200, headers });
     }
 
+    // WASM + 字体走 R2（release 桶，同域避免跨域问题）
+    if (filePath.endsWith(".wasm") || filePath.endsWith(".otf") || filePath.endsWith(".ttf")) {
+      const r2Url = `https://release.interknot.dpdns.org/${filePath}`;
+      const r2Resp = await fetch(r2Url);
+      if (!r2Resp.ok) {
+        // R2 没有，回退到 GitHub
+        console.log(`[worker] R2 miss, fallback to GitHub: ${filePath}`);
+      } else {
+        const mimeType = getMimeType(filePath);
+        const headers = {
+          "Content-Type": mimeType,
+          "Cache-Control": "public, max-age=604800, immutable",
+          ...corsHeaders(),
+        };
+        // 写入 Cloudflare 边缘缓存
+        const cached = new Response(r2Resp.body, { headers });
+        ctx.waitUntil(caches.default.put(new Request(url.toString(), { method: "GET" }), cached.clone()));
+        return cached;
+      }
+    }
+
     // favicon 返回 icon.png（从 public/ 目录获取）
     if (filePath.endsWith(".ico")) {
       const pngUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/public/icon.png`;
