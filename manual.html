@@ -18,6 +18,17 @@
     .top-nav .brand-link { font-weight: 700; font-size: 1rem; }
     .theme-toggle { margin-left: auto; background: none; border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 1.15rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
     .theme-toggle:hover { background: rgba(128,128,128,0.1); }
+
+    /* ── CDN 切换按钮 ── */
+    .cdn-switch { display: flex; align-items: center; gap: 2px; margin-right: 0.25rem; }
+    .cdn-switch .cdn-label { font-size: 0.7rem; color: var(--muted); margin-right: 4px; white-space: nowrap; }
+    .cdn-btn { background: none; border: 1px solid transparent; border-radius: 4px; padding: 2px 6px; font-size: 0.72rem; cursor: pointer; color: var(--muted); transition: all 0.2s; white-space: nowrap; }
+    .cdn-btn:hover { color: var(--fg); border-color: var(--border-color); }
+    .cdn-btn.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); font-weight: 600; }
+    @media (max-width: 640px) {
+      .cdn-switch .cdn-label { display: none; }
+      .cdn-btn { font-size: 0.65rem; padding: 2px 4px; }
+    }
     .manual-wrapper { max-width: var(--max-w); margin: 0 auto; padding: 1rem 1.25rem 4rem; }
     .status-box { text-align: center; padding: 80px 20px; color: var(--muted); font-size: 1.1rem; }
     .spinner { width: 40px; height: 40px; border: 3px solid var(--border-color); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
@@ -80,6 +91,12 @@
       <a href="index.html" class="brand-link">LaTeXSnipper</a>
       <a href="index.html">主页</a>
       <a href="https://github.com/SakuraMathcraft/LaTeXSnipper" target="_blank" rel="noopener">GitHub 仓库</a>
+      <span class="cdn-switch" id="cdnSwitch">
+        <span class="cdn-label">⚡加速</span>
+        <button class="cdn-btn" data-cdn="local">本地</button>
+        <button class="cdn-btn" data-cdn="jsdelivr">全球</button>
+        <button class="cdn-btn" data-cdn="npmmirror">中国</button>
+      </span>
       <button class="theme-toggle" id="themeToggle" title="切换日/夜模式">🌙</button>
     </div>
   </nav>
@@ -142,22 +159,45 @@
       matchMedia('(prefers-color-scheme:dark)').addEventListener('change', u);
     })();
 
-    // ── ⚙️ 加速配置 ──────────────────────────────────────────
-    // 如果访问速度慢，可以尝试切换以下 CDN 镜像：
-    //
-    // 选项 1（默认）：WASM/字体从本站服务器加载（通过 Worker 代理 GitHub）
-    //   优点：Worker 缓存后速度快；缺点：首次加载可能慢
-    //
-    // 选项 2：从 jsDelivr CDN 加载 WASM（全球加速）
-    //   设置 USE_CDN = 'jsdelivr' 即可
-    //
-    // 选项 3：从 npmmirror（中国镜像）加载
-    //   设置 USE_CDN = 'npmmirror'
-    //
-    // 选项 4：从阿里云/其他自定义 CDN 加载
-    //   设置 USE_CDN = 'custom' 并修改下面的 CUSTOM_CDN_URL
-    var USE_CDN = 'local';        // 'local' | 'jsdelivr' | 'npmmirror' | 'custom'
-    var CUSTOM_CDN_URL = '';      // USE_CDN='custom' 时填写，如 'https://your-cdn.example.com/wasm'
+    // ── CDN 切换按钮 ──
+    (function () {
+      var container = document.getElementById('cdnSwitch');
+      if (!container) return;
+      var btns = container.querySelectorAll('.cdn-btn');
+      // 高亮按钮（USE_CDN 在后面定义，先读 localStorage）
+      var activeCdn = 'local';
+      try {
+        var s = localStorage.getItem('latexSnipper-cdn');
+        if (s === 'jsdelivr' || s === 'npmmirror' || s === 'local') activeCdn = s;
+      } catch (e) {}
+      btns.forEach(function (b) {
+        if (b.getAttribute('data-cdn') === activeCdn) b.classList.add('active');
+      });
+      // 点击切换 → 存 localStorage → 刷新页面
+      btns.forEach(function (b) {
+        b.addEventListener('click', function () {
+          var cdn = b.getAttribute('data-cdn');
+          if (cdn === activeCdn) return;
+          try { localStorage.setItem('latexSnipper-cdn', cdn); } catch (e) {}
+          var names = { local: '本地', jsdelivr: '全球 CDN', npmmirror: '中国镜像' };
+          var statusText = document.getElementById('status-text');
+          if (statusText) statusText.textContent = '切换至「' + (names[cdn] || cdn) + '」，重新加载…';
+          setTimeout(function () { location.reload(); }, 300);
+        });
+      });
+      console.log('[manual] CDN 切换 UI 就绪');
+    })();
+
+    // ── ⚙️ 加速配置（可通过导航栏按钮切换） ─────────────────
+    // 从 localStorage 读取用户的 CDN 偏好，无则默认 local
+    var USE_CDN = 'local';
+    try {
+      var saved = localStorage.getItem('latexSnipper-cdn');
+      if (saved === 'jsdelivr' || saved === 'npmmirror' || saved === 'local') {
+        USE_CDN = saved;
+      }
+    } catch (e) {}
+    var CUSTOM_CDN_URL = '';      // 自定义 CDN URL（暂未开放 UI）
 
     // 各 CDN 源对应的 WASM 下载地址
     var CDN_SOURCES = {
@@ -318,7 +358,7 @@
         if (m.indexOf('超时') !== -1) {
           var cdnTip = '';
           if (USE_CDN === 'local') {
-            cdnTip = '<br><br>💡 <b>网络慢？试试 CDN 加速：</b>将上方 <code>USE_CDN</code> 改为 <code>jsdelivr</code>（全球）或 <code>npmmirror</code>（中国镜像）';
+            cdnTip = '<br><br>💡 <b>网络慢？</b>点击导航栏「全球」或「中国」按钮切换 CDN 加速加载';
           }
           showError('编译超时', m + cdnTip + '<br><br><a href="user_manual.html">查看 HTML 版本</a>');
         } else {
