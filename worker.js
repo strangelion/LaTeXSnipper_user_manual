@@ -18,11 +18,12 @@ const MIME_TYPES = {
   gif: "image/gif",
   svg: "image/svg+xml",
   ico: "image/x-icon",
+  wasm: "application/wasm",
   mp4: "video/mp4",
   webm: "video/webm",
 };
 
-const BINARY_TYPES = ["png", "jpg", "jpeg", "gif", "svg", "ico"];
+const BINARY_TYPES = ["png", "jpg", "jpeg", "gif", "svg", "ico", "wasm"];
 
 function getMimeType(path) {
   const ext = path.split(".").pop().toLowerCase();
