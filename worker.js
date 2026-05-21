@@ -53,7 +53,7 @@ function errorResponse(message, status = 500) {
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const host = url.hostname;
     const path = url.pathname;
@@ -138,7 +138,14 @@ export default {
       });
     }
 
-    // 其他文件从 GitHub 获取
+    // 其他文件从 GitHub 获取（使用 Cloudflare Cache API 加速）
+    const cache = caches.default;
+    const cacheKey = new Request(url.toString(), { method: "GET" });
+    const cachedResponse = await cache.match(cacheKey);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
     const githubUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${filePath}`;
     const response = await fetch(githubUrl);
 
@@ -150,10 +157,15 @@ export default {
     const isBinary = BINARY_TYPES.includes(ext);
     const mimeType = getMimeType(filePath);
     
-    // HTML/CSS/JS 用短缓存，其他文件用长缓存
-    let cacheControl = "public, max-age=3600, s-maxage=86400";
+    // 大文件（WASM、字体、图片）缓存更长时间
+    const isLargeAsset = filePath.endsWith(".wasm") || filePath.endsWith(".otf") || filePath.endsWith(".ttf") || filePath.endsWith(".png") || filePath.endsWith(".jpg") || filePath.endsWith(".jpeg");
+    let cacheControl;
     if (filePath.endsWith(".html") || filePath.endsWith(".css") || filePath.endsWith(".js")) {
       cacheControl = "public, max-age=0, s-maxage=3600, must-revalidate";
+    } else if (isLargeAsset) {
+      cacheControl = "public, max-age=86400, s-maxage=604800, immutable";
+    } else {
+      cacheControl = "public, max-age=3600, s-maxage=86400";
     }
     
     const headers = {
@@ -164,7 +176,15 @@ export default {
     };
 
     const content = isBinary ? await response.arrayBuffer() : await response.text();
-    return new Response(content, { headers });
+    const newResponse = new Response(content, { headers });
+    
+    // 只有成功的响应才缓存到 Cloudflare 边缘
+    if (response.ok) {
+      const ttl = isLargeAsset ? 604800 : 86400; // 大文件7天，其他1天
+      ctx.waitUntil(cache.put(cacheKey, newResponse.clone()));
+    }
+    
+    return newResponse;
   },
 };
 

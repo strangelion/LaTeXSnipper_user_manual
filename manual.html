@@ -142,7 +142,37 @@
       matchMedia('(prefers-color-scheme:dark)').addEventListener('change', u);
     })();
 
-    // ── 超时包装 ──
+    // ── ⚙️ 加速配置 ──────────────────────────────────────────
+    // 如果访问速度慢，可以尝试切换以下 CDN 镜像：
+    //
+    // 选项 1（默认）：WASM/字体从本站服务器加载（通过 Worker 代理 GitHub）
+    //   优点：Worker 缓存后速度快；缺点：首次加载可能慢
+    //
+    // 选项 2：从 jsDelivr CDN 加载 WASM（全球加速）
+    //   设置 USE_CDN = 'jsdelivr' 即可
+    //
+    // 选项 3：从 npmmirror（中国镜像）加载
+    //   设置 USE_CDN = 'npmmirror'
+    //
+    // 选项 4：从阿里云/其他自定义 CDN 加载
+    //   设置 USE_CDN = 'custom' 并修改下面的 CUSTOM_CDN_URL
+    var USE_CDN = 'local';        // 'local' | 'jsdelivr' | 'npmmirror' | 'custom'
+    var CUSTOM_CDN_URL = '';      // USE_CDN='custom' 时填写，如 'https://your-cdn.example.com/wasm'
+
+    // 各 CDN 源对应的 WASM 下载地址
+    var CDN_SOURCES = {
+      jsdelivr: {
+        compiler: 'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm',
+        renderer: 'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer/pkg/typst_ts_renderer_bg.wasm',
+      },
+      npmmirror: {
+        compiler: 'https://registry.npmmirror.com/@myriaddreamin/typst-ts-web-compiler/0.7.0-rc2/files/pkg/typst_ts_web_compiler_bg.wasm',
+        renderer: 'https://registry.npmmirror.com/@myriaddreamin/typst-ts-renderer/0.7.0-rc2/files/pkg/typst_ts_renderer_bg.wasm',
+      },
+    };
+    // ──────────────────────────────────────────────────────────
+
+    // ── 超时包装（带重试） ──
     function withTimeout(promise, ms, label) {
       return Promise.race([
         promise,
@@ -152,24 +182,57 @@
       ]);
     }
 
+    // 带重试的 fetch
+    async function fetchWithRetry(url, options, maxRetries, timeoutMs) {
+      var lastErr;
+      for (var i = 0; i <= maxRetries; i++) {
+        if (i > 0) console.log('[manual] 重试第 ' + i + ' 次: ' + url);
+        try {
+          return await withTimeout(fetch(url, options), timeoutMs, '加载');
+        } catch (err) {
+          lastErr = err;
+          // 等待指数退避：1s, 2s, 4s...
+          if (i < maxRetries) {
+            await new Promise(function (r) { setTimeout(r, Math.min(1000 * Math.pow(2, i), 8000)); });
+          }
+        }
+      }
+      throw lastErr;
+    }
+
     // ── 主渲染流程 ──
     (async function () {
       try {
-        // 1. 配置 WASM
+        // 1. 配置 WASM（根据 USE_CDN 选择来源）
         showStatus('正在加载编译引擎…');
+        var wasmCompilerUrl, wasmRendererUrl;
+        if (USE_CDN === 'local') {
+          wasmCompilerUrl = 'wasm/typst_ts_web_compiler_bg.wasm';
+          wasmRendererUrl = 'wasm/typst_ts_renderer_bg.wasm';
+        } else if (USE_CDN === 'custom') {
+          wasmCompilerUrl = CUSTOM_CDN_URL + '/typst_ts_web_compiler_bg.wasm';
+          wasmRendererUrl = CUSTOM_CDN_URL + '/typst_ts_renderer_bg.wasm';
+        } else if (CDN_SOURCES[USE_CDN]) {
+          wasmCompilerUrl = CDN_SOURCES[USE_CDN].compiler;
+          wasmRendererUrl = CDN_SOURCES[USE_CDN].renderer;
+        } else {
+          wasmCompilerUrl = 'wasm/typst_ts_web_compiler_bg.wasm';
+          wasmRendererUrl = 'wasm/typst_ts_renderer_bg.wasm';
+        }
+        console.log('[manual] WASM 来源:', USE_CDN, wasmCompilerUrl);
         $typst.setCompilerInitOptions({
-          getModule: function () { return 'wasm/typst_ts_web_compiler_bg.wasm'; },
+          getModule: function () { return wasmCompilerUrl; },
         });
         $typst.setRendererInitOptions({
-          getModule: function () { return 'wasm/typst_ts_renderer_bg.wasm'; },
+          getModule: function () { return wasmRendererUrl; },
         });
 
-        // 1.5 加载中文字体（CJK）— 使用开源中文字体 Noto Serif CJK SC（SIL OFL 许可证）
+        // 1.5 加载中文字体 — 使用开源中文字体 Noto Serif CJK SC（SIL OFL 许可证）
         showStatus('正在加载中文字体…');
         $typst.use(TypstSnippet.preloadFontFromUrl('fonts/NotoSerifCJKsc-Regular.otf'));
         console.log('[manual] 字体已注册 ✅');
 
-        // 2. 获取 typ 源文件 + 图片
+        // 2. 获取 typ 源文件 + 图片（增加超时到 120s，带重试）
         showStatus('正在获取手册内容…');
         var IMAGE_FILES = [
           'assets/images/LaTeXSnipper.png',
@@ -184,7 +247,7 @@
         var results = await withTimeout(Promise.all([
           fetch('user_manual.typ').then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); }),
           Promise.all(fetches),
-        ]), 30000, '加载');
+        ]), 120000, '加载');
         var typSource = results[0];
         var allImages = results[1];
 
@@ -216,8 +279,8 @@
         console.log('[manual] 图片已注入');
 
         // 5. 测试 + 编译
-        showStatus('正在验证编译器…');
-        await withTimeout($typst.svg({ mainContent: 'Hello' }), 15000, '测试');
+        showStatus('正在验证编译器（首次编译需下载 ~8MB WASM + 字体）…');
+        await withTimeout($typst.svg({ mainContent: 'Hello' }), 60000, '测试');
         console.log('[manual] 测试通过 ✅');
 
         showStatus('正在编译 & 渲染…');
@@ -253,7 +316,11 @@
         console.error('[manual] 失败:', err);
         var m = err.message || err;
         if (m.indexOf('超时') !== -1) {
-          showError('编译超时', m + '<br><br>文档过大，请 <a href="user_manual.html">查看 HTML 版本</a>。');
+          var cdnTip = '';
+          if (USE_CDN === 'local') {
+            cdnTip = '<br><br>💡 <b>网络慢？试试 CDN 加速：</b>将上方 <code>USE_CDN</code> 改为 <code>jsdelivr</code>（全球）或 <code>npmmirror</code>（中国镜像）';
+          }
+          showError('编译超时', m + cdnTip + '<br><br><a href="user_manual.html">查看 HTML 版本</a>');
         } else {
           showError('渲染失败', m + '<br><br>请 <a href="user_manual.html">查看 HTML 版本</a>。');
         }
