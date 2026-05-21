@@ -1,8 +1,23 @@
 name = "latexsnipper"
 main = "worker.js"
 compatibility_date = "2026-05-20"
-workers_dev = false
+workers_dev = true
 
+# ── 分支部署 ──
+# 非 master 分支自动部署为预览版本
+# 部署到 workers.dev，URL 格式：<分支名>.latexsnipper.<子域名>.workers.dev
+# 使用方式：wrangler deploy --branch <分支名>
+# 等价于：wrangler deploy --env preview
+
+# ── 生产环境 ──
+[env.production]
+workers_dev = false
 # routes = [
 #   "your-domain.com/*",
 # ]
+vars = { GITHUB_BRANCH = "master", DEPLOY_ENV = "production" }
+
+# ── 预览环境 ──
+[env.preview]
+workers_dev = true
+vars = { DEPLOY_ENV = "preview" }

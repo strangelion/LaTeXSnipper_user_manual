@@ -5,7 +5,21 @@
 
 const GITHUB_OWNER = "strangelion";
 const GITHUB_REPO = "LaTeXSnipper_user_manual";
-const GITHUB_BRANCH = "master";
+
+/**
+ * 获取当前使用的 GitHub 分支：
+ * 1. 优先使用环境变量（由 wrangler 的 env 传入或 --branch 指定）
+ * 2. 回退到 "master"
+ * 
+ * 非 master 分支自动视为预览部署，用于测试效果。
+ */
+function getBranch(env) {
+  return env.GITHUB_BRANCH || env.CF_PAGES_BRANCH || "master";
+}
+
+function isPreview(env) {
+  return env.DEPLOY_ENV === "preview" || getBranch(env) !== "master";
+}
 
 const MIME_TYPES = {
   html: "text/html; charset=utf-8",
@@ -108,7 +122,8 @@ export default {
 
     // favicon 返回 icon.png（从 public/ 目录获取）
     if (filePath.endsWith(".ico")) {
-      const pngUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/public/icon.png`;
+      const branch = getBranch(env);
+      const pngUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${branch}/public/icon.png`;
       const icoResp = await fetch(pngUrl);
       if (!icoResp.ok) {
         return new Response(null, { status: 204, headers: corsHeaders() });
@@ -120,7 +135,8 @@ export default {
     }
 
     // 其他文件从 GitHub 获取
-    const githubUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${filePath}`;
+    const branch = getBranch(env);
+    const githubUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${branch}/${filePath}`;
     const response = await fetch(githubUrl);
 
     if (!response.ok) {
@@ -151,6 +167,37 @@ export default {
     };
 
     const content = isBinary ? await response.arrayBuffer() : await response.text();
+
+    // ── 预览分支标识 ──
+    // 非 master 分支在响应中添加预览标记，方便识别
+    if (isPreview(env)) {
+      headers["X-Deploy-Env"] = "preview";
+      headers["X-Branch"] = getBranch(env);
+
+      // HTML 页面注入预览横幅
+      if (filePath.endsWith(".html") && typeof content === "string") {
+        const branchName = getBranch(env);
+        const previewBanner = `
+<div style="
+  position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+  background: linear-gradient(135deg, #f97316, #dc2626);
+  color: #fff; text-align: center; padding: 6px 12px;
+  font-family: system-ui, -apple-system, sans-serif; font-size: 13px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+">
+  <span style="font-weight: 700;">🔬 预览分支</span>
+  <code style="background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px;">${branchName}</code>
+  <span style="opacity: 0.8;">· 仅用于测试</span>
+  <a href="/" style="color: #fff; text-decoration: underline; opacity: 0.8;">切换到正式版 →</a>
+</div>
+`;
+        // 在 <body> 后插入横幅
+        const modified = content.replace("<body>", `<body>${previewBanner}`);
+        return new Response(modified, { headers });
+      }
+    }
+
     return new Response(content, { headers });
   },
 };
