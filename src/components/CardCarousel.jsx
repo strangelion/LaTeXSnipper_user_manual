@@ -29,18 +29,66 @@ function DotIcon({ name }) {
 }
 
 export default function CardCarousel({ cards, isMobile }) {
-  const [current, setCurrent] = useState(0)
+  const [current, setCurrent] = useState(1) // start at index 1 (first real card)
   const [flipped, setFlipped] = useState({})
   const sectionRef = useRef(null)
   const wrapperRef = useRef(null)
   const trackRef = useRef(null)
+  const isTransitioning = useRef(false)
 
   const total = cards.length
+  // Build infinite loop array: [lastClone, ...realCards, firstClone]
+  const loopCards = useRef([])
+
+  // Initialize loopCards whenever cards change
+  if (loopCards.current.length !== total + 2 || loopCards.current[1]?.id !== cards[0]?.id) {
+    const lastCard = cards[total - 1]
+    const firstCard = cards[0]
+    // Clone with unique keys to avoid React duplicate-key warnings
+    const cloneLast = { ...lastCard, id: lastCard.id + '-clone-last' }
+    const cloneFirst = { ...firstCard, id: firstCard.id + '-clone-first' }
+    loopCards.current = [cloneLast, ...cards, cloneFirst]
+  }
+
+  // Remove transition temporarily (for instant jump-back)
+  const disableTransition = useCallback(() => {
+    const track = trackRef.current
+    if (!track) return
+    track.style.transition = 'none'
+    // Force reflow to ensure the style change takes effect immediately
+    void track.offsetHeight
+  }, [])
+
+  // Re-enable transition
+  const enableTransition = useCallback(() => {
+    const track = trackRef.current
+    if (!track) return
+    track.style.transition = ''
+  }, [])
+
+  // After transition ends, check if we need to jump back to the real card
+  const handleTransitionEnd = useCallback(() => {
+    const track = trackRef.current
+    if (!track) return
+
+    if (current === 0) {
+      // Landed on the clone of last card → jump to real last card (index total)
+      disableTransition()
+      setCurrent(total)
+    } else if (current === total + 1) {
+      // Landed on the clone of first card → jump to real first card (index 1)
+      disableTransition()
+      setCurrent(1)
+    }
+  }, [current, total, disableTransition])
 
   const goTo = useCallback((index) => {
-    setCurrent(((index % total) + total) % total)
+    if (isTransitioning.current) return
+    isTransitioning.current = true
+    enableTransition() // restore CSS transition after a possible jump-back
+    setCurrent(index)
     setFlipped({})
-  }, [total])
+  }, [enableTransition])
 
   const goNext = useCallback(() => {
     goTo(current + 1)
@@ -186,6 +234,21 @@ export default function CardCarousel({ cards, isMobile }) {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isMobile])
 
+  // Compute the real card index for display (dots / counter)
+  const realIndex = ((current - 1) % total + total) % total
+
+  // Listen for transition end to reset isTransitioning and handle loop jumps
+  useEffect(() => {
+    const track = trackRef.current
+    if (!track) return
+    const onEnd = () => {
+      isTransitioning.current = false
+      handleTransitionEnd()
+    }
+    track.addEventListener('transitionend', onEnd)
+    return () => track.removeEventListener('transitionend', onEnd)
+  }, [handleTransitionEnd])
+
   return (
     <section
       className="slide-section carousel-section"
@@ -194,9 +257,9 @@ export default function CardCarousel({ cards, isMobile }) {
     >
       <div className="slide-scroll">
         <div className="carousel-container" ref={wrapperRef}>
-          {/* Track */}
+          {/* Track — uses loopCards for infinite seamless scrolling */}
           <div className="carousel-track" ref={trackRef} style={{ transform: `translateX(-${current * 100}%)` }}>
-            {cards.map((card) => (
+            {loopCards.current.map((card) => (
               <div key={card.id} className="carousel-slide">
                 <div className={`carousel-card ${flipped[card.id] ? 'show-detail' : ''}`}>
                   {/* Front face */}
@@ -240,13 +303,13 @@ export default function CardCarousel({ cards, isMobile }) {
             </svg>
           </button>
 
-          {/* Dots */}
+          {/* Dots (mapped from real cards, not clones) */}
           <div className="carousel-dots">
             {cards.map((card, i) => (
               <button
                 key={card.id}
-                className={`carousel-dot ${i === current ? 'active' : ''}`}
-                onClick={() => goTo(i)}
+                className={`carousel-dot ${i === realIndex ? 'active' : ''}`}
+                onClick={() => goTo(i + 1)}
                 title={card.title}
                 aria-label={`第 ${i + 1} 张卡片`}
               >
@@ -257,7 +320,7 @@ export default function CardCarousel({ cards, isMobile }) {
 
           {/* Counter */}
           <div className="carousel-counter">
-            {current + 1} / {total}
+            {realIndex + 1} / {total}
           </div>
         </div>
       </div>
