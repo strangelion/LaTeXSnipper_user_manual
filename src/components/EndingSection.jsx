@@ -6,33 +6,59 @@ export default function EndingSection() {
   const itemsRef = useRef([])
 
   useEffect(() => {
-    const handleScroll = () => {
+    const isMobile = window.innerWidth < 768
+    let raf = null
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+    const lerp = (a, b, t) => a + (b - a) * t
+    const segment = (p, a, b) => clamp((p - a) / (b - a), 0, 1)
+    const easeOut = (t) => 1 - Math.pow(1 - t, 3)
+
+    const update = () => {
+      raf = null
       if (!sectionRef.current || !innerRef.current) return
 
       const rect = sectionRef.current.getBoundingClientRect()
       const vh = window.innerHeight
       const progress = Math.max(0, Math.min(1, 1 - (rect.top + rect.height) / (vh + rect.height)))
 
-      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
-      const lerp = (a, b, t) => a + (b - a) * t
-      const segment = (p, a, b) => clamp((p - a) / (b - a), 0, 1)
+      if (isMobile) {
+        const f = easeOut(clamp(progress * 2, 0, 1))
+        innerRef.current.style.opacity = f.toFixed(4)
+        innerRef.current.style.transform = `translateY(${lerp(30, 0, f).toFixed(1)}px)`
 
-      const f = segment(progress, 0.05, 0.5)
-      innerRef.current.style.opacity = f.toFixed(4)
-      innerRef.current.style.transform = `translateY(${lerp(40, 0, f).toFixed(1)}px)`
+        itemsRef.current.forEach((item, i) => {
+          if (!item) return
+          const delay = i * 0.06
+          const itemF = easeOut(clamp((progress * 2 - delay) / (1 - delay), 0, 1))
+          item.style.opacity = itemF.toFixed(4)
+          item.style.transform = `translateY(${lerp(16, 0, itemF).toFixed(1)}px)`
+        })
+      } else {
+        const f = easeOut(segment(progress, 0.05, 0.5))
+        innerRef.current.style.opacity = f.toFixed(4)
+        innerRef.current.style.transform = `translateY(${lerp(40, 0, f).toFixed(1)}px)`
 
-      // Stagger child items
-      itemsRef.current.forEach((item, i) => {
-        if (!item) return
-        const delay = i * 0.08
-        const itemF = segment(progress, 0.1 + delay, 0.55 + delay)
-        item.style.opacity = itemF.toFixed(4)
-        item.style.transform = `translateY(${lerp(24, 0, itemF).toFixed(1)}px)`
-      })
+        itemsRef.current.forEach((item, i) => {
+          if (!item) return
+          const delay = i * 0.08
+          const itemF = easeOut(segment(progress, 0.1 + delay, 0.55 + delay))
+          item.style.opacity = itemF.toFixed(4)
+          item.style.transform = `translateY(${lerp(24, 0, itemF).toFixed(1)}px)`
+        })
+      }
     }
 
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+    update()
+
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
   }, [])
 
   const setItemRef = (el, i) => { itemsRef.current[i] = el }

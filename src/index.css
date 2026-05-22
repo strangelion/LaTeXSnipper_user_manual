@@ -84,6 +84,29 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+  /* 防止滚动跳动 */
+  overscroll-behavior: none;
+}
+
+/* 全局平滑过渡 - 主题/调色板切换时渐变 */
+body {
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* 只对关键 UI 元素做主题过渡，避免全局 * 选择器性能开销 */
+.hero-header,
+.site-footer,
+.card-viewport,
+.card-front,
+.card-detail,
+.card-detail-inner,
+.ending-feature,
+.section-dot,
+.back-to-top,
+.palette-selector,
+.theme-toggle {
+  transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, color 0.35s ease;
 }
 
 * {
@@ -237,12 +260,14 @@ main {
 .hero-header {
   background: var(--hdr-bg);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   position: sticky;
   top: 0;
   left: 0;
   right: 0;
   z-index: 40;
   border-bottom: 1px solid var(--border-color);
+  transition: background 0.4s ease, border-color 0.4s ease, backdrop-filter 0.4s ease;
 }
 
 .hero-header .hero-inner {
@@ -306,6 +331,7 @@ main {
   position: relative;
   min-height: 180vh;
   overflow: hidden;
+  scroll-margin-top: 60px;
 }
 
 .slide-section[data-slide="hero"] {
@@ -495,7 +521,8 @@ main {
   font-weight: 600;
   color: var(--fg);
   backdrop-filter: blur(8px);
-  transition: transform 0.2s, box-shadow 0.2s;
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, background 0.3s ease, border-color 0.3s ease;
   will-change: transform, opacity;
 }
 
@@ -541,15 +568,17 @@ main {
   z-index: 200;
   background: transparent;
   pointer-events: none;
+  will-change: transform;
 }
 
 .scroll-progress-bar {
   height: 100%;
   background: linear-gradient(90deg, var(--accent), var(--accent-hover));
   transform-origin: left;
-  transition: transform 0.08s linear;
+  transform: scaleX(0);
   border-radius: 0 2px 2px 0;
   box-shadow: 0 0 8px var(--accent);
+  will-change: transform;
 }
 
 /* --- Section Indicator (side dots with icons) --- */
@@ -563,7 +592,7 @@ main {
   flex-direction: column;
   gap: 8px;
   opacity: 0;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   pointer-events: none;
 }
 
@@ -643,25 +672,33 @@ main {
 /* --- Mobile --- */
 @media (max-width: 768px) {
   .slide-section {
-    min-height: 100vh;
-    min-height: 100dvh;
+    min-height: auto;
+    padding: 0.5rem 0;
   }
 
   .slide-section[data-slide="hero"] {
-    min-height: 60vh;
-    min-height: 60dvh;
-    padding-top: 3rem;
+    min-height: auto;
+    padding-top: 4rem;
+    padding-bottom: 1rem;
   }
 
   .slide-section[data-slide="ending"] {
-    min-height: 40vh;
-    min-height: 40dvh;
+    min-height: auto;
+    padding-bottom: 2rem;
+  }
+
+  .slide-section.card-slide {
+    margin-bottom: 1.5rem;
   }
 
   .slide-scroll {
     position: relative;
     top: auto;
     height: auto;
+  }
+
+  .slide-inner {
+    will-change: transform, opacity;
   }
 
   .hero-title {
@@ -683,11 +720,22 @@ main {
     padding: 0.4rem 0.7rem;
   }
 
+  .card-wrapper {
+    will-change: transform, opacity;
+    padding: 0 0.5rem;
+  }
+
   .card-viewport {
     min-height: auto;
+    height: auto;
+    max-height: none;
     position: relative;
     display: flex;
     flex-direction: column;
+    backdrop-filter: blur(12px);
+    border-radius: 20px;
+    box-shadow: var(--card-shadow);
+    overflow: visible;
   }
 
   .card-front {
@@ -696,10 +744,16 @@ main {
     top: auto;
     width: 100%;
     height: auto;
-    padding: 2rem 1.5rem;
-    border-radius: 16px;
+    padding: 1.6rem 1.25rem;
+    border-radius: 20px 20px 0 0;
     border: 1px solid var(--card-border);
+    border-bottom: none;
     flex-shrink: 0;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .card-front:active {
+    transform: scale(0.98);
   }
 
   .card-detail {
@@ -707,16 +761,18 @@ main {
     left: auto;
     top: auto;
     width: 100%;
-    padding: 1rem 1.5rem 1.5rem;
+    padding: 0.8rem 1.25rem 1.25rem;
     margin-left: 0;
-    border-radius: 16px;
+    border-radius: 0 0 20px 20px;
     border: 1px solid var(--card-border);
+    border-top: none;
     flex-shrink: 0;
   }
 
   .card-detail-inner {
     padding-left: 0.5rem;
     overflow-y: visible;
+    max-height: none;
   }
 
   .card-front h3 {

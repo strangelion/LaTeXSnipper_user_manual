@@ -6,6 +6,53 @@ export default function CardSlide({ card, isMobile }) {
   const frontRef = useRef(null)
   const detailRef = useRef(null)
 
+  // —— 移动端：滚动驱动的平滑渐入 + 视差 ——
+  useEffect(() => {
+    if (!isMobile) return
+    const wrapper = wrapperRef.current
+    if (!wrapper) return
+
+    let raf = null
+
+    const update = () => {
+      raf = null
+      const rect = wrapper.getBoundingClientRect()
+      const vh = window.innerHeight
+
+      // 计算卡片在视口中的可见比例
+      const visible = Math.max(0, Math.min(1,
+        (vh - rect.top) / (vh + rect.height)
+      ))
+
+      // 缓动：先快后慢
+      const easeOut = (t) => 1 - Math.pow(1 - t, 2.5)
+      const p = easeOut(Math.min(visible * 1.5, 1))
+
+      // 透明度：从 0 → 1
+      const opacity = Math.min(1, p * 1.3)
+      // 上滑：从 50px → 0
+      const translateY = (1 - p) * 50
+      // 微缩放：从 0.92 → 1.0
+      const scale = 0.92 + p * 0.08
+
+      wrapper.style.opacity = opacity.toFixed(4)
+      wrapper.style.transform = `translateY(${translateY.toFixed(1)}px) scale(${scale.toFixed(4)})`
+    }
+
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+    // 初始检查：如果已在视口中则立刻显示
+    update()
+
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [isMobile])
+
   useEffect(() => {
     if (isMobile) return
 

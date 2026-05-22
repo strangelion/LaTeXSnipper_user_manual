@@ -52,9 +52,16 @@ export default function HeroSection() {
       if (isMobile) {
         const rect = section.getBoundingClientRect()
         const vh = window.innerHeight
-        const p = clamp(1 - (rect.top + rect.height) / (vh + rect.height), 0, 1)
-        inner.style.opacity = Math.min(1, (1 - p) * 4).toFixed(4)
-        inner.style.transform = 'none'
+        // 基于视口的滚动进度（元素底部触碰视口底部开始 → 元素顶部离开视口顶部结束）
+        const raw = clamp(1 - rect.top / (vh + rect.height), 0, 1)
+        // 缓动
+        const easeOut = (t) => 1 - Math.pow(1 - t, 2.5)
+        const p = easeOut(raw)
+        // 淡入 + 上滑
+        const opacity = Math.min(1, p * 1.8)
+        const translateY = (1 - p) * 30
+        inner.style.opacity = opacity.toFixed(4)
+        inner.style.transform = `translateY(${translateY.toFixed(1)}px)`
       } else {
         const range = section.offsetHeight
         const raw = clamp(window.scrollY / range, 0, 1)
