@@ -33,6 +33,45 @@ def inline(text):
     text = re.sub(r'#(?:set|show|let)\s+\S+', '', text)
     return text
 
+def slugify(text):
+    """Generate an ASCII URL-friendly ID from Chinese/mixed text."""
+    s = text.strip().lower()
+    mapping = {
+        '开': 'kai', '始': 'shi', '使': 'shi', '用': 'yong', '前': 'qian',
+        '必': 'bi', '读': 'du', '主': 'zhu', '窗': 'chuang', '口': 'kou',
+        '功': 'gong', '能': 'neng', '入': 'ru', '与': 'yu', '识': 'shi',
+        '别': 'bie', '流': 'liu', '程': 'cheng', '本': 'ben', '地': 'di',
+        '模': 'mo', '型': 'xing', '相': 'xiang', '关': 'guan', '问': 'wen',
+        '题': 'ti', '外': 'wai', '部': 'bu', '安': 'an', '装': 'zhuang',
+        '和': 'he', '环': 'huan', '境': 'jing', '网': 'wang', '络': 'luo',
+        '更': 'geng', '新': 'xin', '效': 'xiao', '果': 'guo', '技': 'ji',
+        '巧': 'qiao', '特': 'te', '定': 'ding', '平': 'ping', '台': 'tai',
+        '其': 'qi', '他': 'ta', '软': 'ruan', '件': 'jian', '冲': 'chong',
+        '突': 'tu', '有': 'you', '反': 'fan', '馈': 'kui', '源': 'yuan',
+        '码': 'ma', '运': 'yun', '行': 'xing', '发': 'fa', '者': 'zhe',
+        '常': 'chang', '见': 'jian', '集': 'ji', '配': 'pei', '置': 'zhi',
+        '展': 'zhan', '示': 'shi', '性': 'xing', '参': 'can', '考': 'kao',
+        '指': 'zhi', '南': 'nan', '介': 'jie', '绍': 'shao', '项': 'xiang',
+        '目': 'mu', '内': 'nei', '校': 'xiao', '正': 'zheng',
+        '编': 'bian', '辑': 'ji', '器': 'qi', '设': 'she', '备': 'bei',
+        '键': 'jian', '盘': 'pan', '快': 'kuai', '捷': 'jie', '方': 'fang',
+        '式': 'shi', '自': 'zi', '动': 'dong', '检': 'jian', '测': 'ce',
+        '更': 'geng', '多': 'duo', '说': 'shuo', '明': 'ming',
+        '回': 'hui', '归': 'gui', '分': 'fen', '析': 'xi', '项': 'xiang',
+        '目': 'mu',
+    }
+    result = []
+    for ch in s:
+        if 'a' <= ch <= 'z' or '0' <= ch <= '9' or ch == '-':
+            result.append(ch)
+        elif ch in mapping:
+            result.append(mapping[ch])
+        elif ch.isspace() or ch in '._:;,':
+            result.append('-')
+    import re
+    r = re.sub(r'-+', '-', ''.join(result)).strip('-')
+    return r if r else 'heading'
+
 # ── Pre-processing ──
 def preprocess(source):
     """Convert #text(...)[content] to Typst inline syntax or plain text."""
@@ -141,11 +180,11 @@ def tokenise(text):
             if i < n and text[i] in '\n\r': i += 1
             if i < n and text[i] in '\n\r': i += 1
             continue
-        # heading markers
+        # heading markers (= h1, == h2, === h3)
         if ch == '=':
             j = i
             while j < n and text[j] == '=': j += 1
-            if j - i >= 2 and (j >= n or text[j] == ' '):
+            if j - i >= 1 and (j >= n or text[j] == ' '):
                 yield ('HEADING_MARKER', text[i:j])
                 i = j
                 continue
@@ -393,11 +432,13 @@ def parse_typ(source):
                         if m3:
                             label = m3.group(1)
                             i += 1
+                if not label:
+                    label = slugify(title)
                 aid = f' id="{esc(label)}"' if label else ''
                 out.append(f'<h{level}{aid}>{inline(esc(title))}</h{level}>\n')
                 i += 1; continue
-            # === / == heading markers
-            hm2 = re.match(r'^(={2,})\s*(.+)$', s)
+            # === / == / = heading markers
+            hm2 = re.match(r'^(={1,})\s*(.+)$', s)
             if hm2:
                 level = len(hm2.group(1))
                 title = hm2.group(2)
@@ -406,6 +447,8 @@ def parse_typ(source):
                 label = lm2.group(1) if lm2 else ''
                 if label:
                     title = title[:lm2.start()].rstrip()
+                else:
+                    label = slugify(title)
                 aid = f' id="{esc(label)}"' if label else ''
                 out.append(f'<h{level}{aid}>{inline(esc(title))}</h{level}>\n')
                 i += 1; continue
@@ -549,6 +592,8 @@ def parse_typ(source):
                     else:
                         label_tokens.append(ch[1])
                 label = ''.join(label_tokens)
+            if not label:
+                label = slugify(title)
             aid = f' id="{esc(label)}"' if label else ''
             out.append(f'<h{level}{aid}>{inline(esc(title))}</h{level}>\n')
             continue
@@ -571,6 +616,9 @@ def parse_typ(source):
             label = lm.group(1) if lm else ''
             if label:
                 title = title[:lm.start()].rstrip()
+            else:
+                # auto-generate ID from title text
+                label = slugify(title)
             aid = f' id="{esc(label)}"' if label else ''
             out.append(f'<h{level}{aid}>{inline(esc(title))}</h{level}>\n')
             # consume trailing newline
@@ -753,7 +801,7 @@ def parse_typ(source):
                                 if peek()[0] == 'NEWLINE': consume()
                                 break
                         code_lines.append('\n')
-                    elif nt2 in ('TEXT', 'CHAR', 'BREAK', 'STR', 'CODE', 'HASH', 'LIST', 'PAREN', 'BRACK', 'BRACE'):
+                    elif nt2 in ('TEXT', 'CHAR', 'BREAK', 'STR', 'CODE', 'HASH', 'LIST', 'PAREN', 'BRACK', 'BRACE', 'HEADING_MARKER'):
                         consume()
                         if nt2 == 'BREAK':
                             code_lines.append('\n')
@@ -896,14 +944,16 @@ def build_toc(content):
         if hid:
             toc.append((level, hid, text))
 
-    # 提取正文中 Typst 语法风格的标题（如 <p>=Heading <sec-id></p>）
-    ph_pattern = r'<p>=+([^<]+)&lt;([^&]+)&gt;\s*</p>'
+    # 提取正文中 Typst 语法风格的标题（如 <p>=Heading <sec-id></p> 或 <p>=Heading</p>）
+    ph_pattern = r'<p>=+([^<]+?)(?:\s*&lt;([^&]+)&gt;)?\s*</p>'
     for m in re.finditer(ph_pattern, content):
         raw_text = m.group(1).strip()
-        hid = m.group(2).strip()
+        hid = m.group(2).strip() if m.group(2) else ''
         level = 1  # 都按 h1 处理，因为无法区分级别
         text = re.sub(r'<[^>]+>', '', raw_text)
-        if hid and raw_text and not any(hid == h[1] for h in toc):
+        if not hid:
+            hid = slugify(text)
+        if raw_text and not any(hid == h[1] for h in toc):
             toc.append((level, hid, text))
 
     # 通过 volume-divider 定位分卷
@@ -949,7 +999,7 @@ def main():
         'var rs=document.getElementById("rightSidebar"),rt=document.getElementById("rightSidebarTrigger"),rc=document.getElementById("rightSidebarClose");'
         'function co(){if(rs)rs.classList.remove("open")}'
         'function co2(){if(ls)ls.classList.remove("open")}'
-        'if(ls&&t){'
+        'if(ls){'
         'var h=null;'
         'function e(){co();ls.classList.add("open");clearTimeout(h);h=null}'
         'function i(){h=setTimeout(function(){ls.classList.remove("open")},300)}'
@@ -958,7 +1008,7 @@ def main():
         'ls.addEventListener("mouseleave",i);'
         'if(lc)lc.addEventListener("click",function(){ls.classList.remove("open");clearTimeout(h)});'
         '}'
-        'if(rs&&t){'
+        'if(rs){'
         'var h2=null;'
         'function e2(){co2();rs.classList.add("open");clearTimeout(h2);h2=null}'
         'function i2(){h2=setTimeout(function(){rs.classList.remove("open")},300)}'
@@ -1104,18 +1154,17 @@ def main():
   .toc-vol-divider, .rs-vol-divider { padding: 0.6rem 0.5rem 0.3rem; border-top: 1px solid var(--border-color); margin-top: 0.3rem; }
   .toc-vol-divider span, .rs-vol-divider span { font-size: 0.72rem; font-weight: 600; color: var(--accent); opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; }
   /* ── 触发器区域 ── */
-  .sidebar-trigger { position: fixed; top: 0; left: 0; width: 24px; bottom: 0; z-index: 199; cursor: default; }
-  .right-sidebar-trigger { position: fixed; top: 0; right: 0; width: 24px; bottom: 0; z-index: 199; cursor: default; }
+  .sidebar-trigger { position: fixed; top: 0; left: 0; width: 24px; bottom: 0; z-index: 1000; cursor: default; }
+  .right-sidebar-trigger { position: fixed; top: 0; right: 0; width: 24px; bottom: 0; z-index: 1000; cursor: default; }
   .sidebar-trigger:hover ~ .sidebar, .sidebar:hover, .sidebar.open { transform: translateX(0); opacity: 1; }
   .right-sidebar-trigger:hover ~ .right-sidebar, .right-sidebar:hover, .right-sidebar.open { transform: translateX(0); opacity: 1; }
-  .sidebar-trigger:hover, .sidebar:hover + .sidebar-trigger { display: none; }
-  .right-sidebar-trigger:hover, .right-sidebar:hover + .right-sidebar-trigger { display: none; }
   /* ── 收起按钮 ── */
   .sidebar-close, .rs-close { background: none; border: none; cursor: pointer; font-size: 1.1rem; color: var(--muted); padding: 0.2rem; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: background 0.15s; width: 26px; height: 26px; }
   .sidebar-close:hover, .rs-close:hover { background: rgba(128,128,128,0.1); color: var(--fg); }
   /* ── PDF 下载链接 ── */
   .download-pdf-link { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 0.82rem; color: var(--muted); text-decoration: none; padding: 4px 10px; border-radius: 6px; transition: background 0.15s, color 0.15s; }
   .download-pdf-link:hover { background: rgba(128,128,128,0.08); color: var(--fg); }
+  .dl-icon { flex-shrink: 0; display: block; }
   /* ── 分卷分隔条 ── */
   .volume-divider { margin: 2rem 0; position: relative; }
   .volume-divider-inner { display: flex; align-items: center; justify-content: center; position: relative; }
@@ -1138,7 +1187,7 @@ def main():
 </style>
 </head>
 <body class="manual">
-<nav class="top-nav"><div class="inner"><a href="index.html">主页</a><a href="https://github.com/SakuraMathcraft/LaTeXSnipper" target="_blank" rel="noopener">GitHub 仓库</a><a class="download-pdf-link" href="https://release.interknot.dpdns.org/LaTeXSnipper_Manual.pdf" target="_blank" rel="noopener">📥 下载 PDF</a><button class="theme-toggle" id="themeToggle" title="切换日/夜模式">🌙</button></div></nav>
+<nav class="top-nav"><div class="inner"><a href="index.html">主页</a><a href="https://github.com/SakuraMathcraft/LaTeXSnipper" target="_blank" rel="noopener">GitHub 仓库</a><a class="download-pdf-link" href="https://release.interknot.dpdns.org/LaTeXSnipper_Manual.pdf" target="_blank" rel="noopener"><svg class="dl-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> 下载 PDF</a><button class="theme-toggle" id="themeToggle" title="切换日/夜模式"><svg class="theme-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><span class="theme-label">黑夜</span></button></div></nav>
 <div class="spacer-top"></div>
 
 <!-- 左侧导航栏触发器 -->
@@ -1189,7 +1238,7 @@ def main():
   
   if (toggle) {{
     function updateIcon() {{
-      toggle.textContent = isDark() ? '☀️' : '🌙';
+      toggle.innerHTML = isDark() ? '<svg class=\"theme-icon\" xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"5\"/><line x1=\"12\" y1=\"1\" x2=\"12\" y2=\"3\"/><line x1=\"12\" y1=\"21\" x2=\"12\" y2=\"23\"/><line x1=\"4.22\" y1=\"4.22\" x2=\"5.64\" y2=\"5.64\"/><line x1=\"18.36\" y1=\"18.36\" x2=\"19.78\" y2=\"19.78\"/><line x1=\"1\" y1=\"12\" x2=\"3\" y2=\"12\"/><line x1=\"21\" y1=\"12\" x2=\"23\" y2=\"12\"/><line x1=\"4.22\" y1=\"19.78\" x2=\"5.64\" y2=\"18.36\"/><line x1=\"18.36\" y1=\"5.64\" x2=\"19.78\" y2=\"4.22\"/></svg><span class=\"theme-label\">\u767d\u5929</span>' : '<svg class=\"theme-icon\" xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z\"/></svg><span class=\"theme-label\">\u9ed1\u591c</span>';
     }}
     loadTheme();
     updateIcon();

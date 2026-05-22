@@ -75,12 +75,15 @@ export default function MathBackground() {
     }
 
     let checkerboardCache = null
+    let cachedTheme = ''
 
     const buildCheckerboardCache = () => {
       if (!canvas) return
       const w = canvas.width, h = canvas.height
-      // 缓存大小不变时不重建（避免 resize 频繁重绘）
-      if (checkerboardCache && checkerboardCache.width === w && checkerboardCache.height === h) return
+      const currentTheme = isDarkMode() ? 'dark' : 'light'
+      // 缓存大小和主题都不变时不重建
+      if (checkerboardCache && checkerboardCache.width === w && checkerboardCache.height === h && cachedTheme === currentTheme) return
+      cachedTheme = currentTheme
       checkerboardCache = document.createElement('canvas')
       checkerboardCache.width = w
       checkerboardCache.height = h
