@@ -1,5 +1,5 @@
 // LaTeXSnipper 用户手册
-//更新: 2026-05
+// 更新: 2026-05
 #set page(paper: "a4", margin: (left: 2cm, right: 2cm, top: 2cm, bottom: 2.2cm))
 #set text(
   font: ("Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", "SimHei", "Noto Sans", "Helvetica"),
