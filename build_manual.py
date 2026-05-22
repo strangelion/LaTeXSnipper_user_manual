@@ -1115,7 +1115,7 @@ def main():
 
     sidebar_html = f"""<nav class="sidebar" id="sidebar">
   <div class="sidebar-inner">
-    <div class="sidebar-header">📖 目录<button class="sidebar-close" id="sidebarClose" title="收起">✕</button></div>
+    <div class="sidebar-header"><svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> 目录<button class="sidebar-close" id="sidebarClose" title="收起">✕</button></div>
     <ul class="toc-list">
 {toc_html}
     </ul>
@@ -1124,7 +1124,7 @@ def main():
 
     right_sidebar_html = f"""<aside class="right-sidebar" id="rightSidebar">
   <div class="rs-inner">
-    <div class="rs-header">📖 目录<button class="rs-close" id="rightSidebarClose" title="收起">✕</button></div>
+    <div class="rs-header"><svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> 目录<button class="rs-close" id="rightSidebarClose" title="收起">✕</button></div>
     <ul class="rs-list" id="rsList">
 {right_toc_html}
     </ul>
@@ -1140,7 +1140,8 @@ def main():
   .sidebar.open { transform: translateX(0); opacity: 1; }
   .right-sidebar.open { transform: translateX(0); opacity: 1; }
   .sidebar-inner, .rs-inner { padding: 1rem 0.75rem; }
-  .sidebar-header, .rs-header { font-weight: 700; font-size: 0.95rem; color: var(--fg); padding-bottom: 0.75rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; }
+  .sidebar-header, .rs-header { font-weight: 700; font-size: 0.95rem; color: var(--fg); padding-bottom: 0.75rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .sidebar-icon { flex-shrink: 0; }
   .toc-list, .rs-list { list-style: none; margin: 0; padding: 0; }
   .toc-list li, .rs-list li { margin: 0; }
   .toc-list a, .rs-list a { display: block; padding: 0.3rem 0.5rem; color: var(--muted); text-decoration: none; font-size: 0.82rem; border-radius: 6px; transition: background 0.15s, color 0.15s; line-height: 1.4; }
