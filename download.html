@@ -117,6 +117,38 @@
       pointer-events: none;
     }
 
+    .sha256 {
+      font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.78rem;
+      color: var(--accent);
+      cursor: pointer;
+      user-select: all;
+      padding: 0.3rem 0.8rem;
+      border-radius: 8px;
+      background: rgba(128,128,128,0.06);
+      border: 1px solid var(--border-color);
+      transition: background 0.2s, border-color 0.2s;
+      width: auto;
+      box-sizing: border-box;
+      margin: 0;
+      line-height: 1.5;
+      display: inline-block;
+    }
+
+    .sha256:hover {
+      background: rgba(128,128,128,0.12);
+    }
+
+    .sha256:active {
+      background: rgba(128,128,128,0.18);
+    }
+
+    .sha256.copied::after {
+      content: ' ✓ 已复制';
+      color: var(--accent);
+      font-family: inherit;
+    }
+
     .other-info {
       margin-top: 2rem;
       padding: 1.5rem;
@@ -173,6 +205,7 @@
         <h2 class="platform-name">Windows</h2>
         <p class="platform-desc">Windows 10 / 11，x86_64</p>
         <a class="download-btn" href="https://release.interknot.dpdns.org/LaTeXSnipperSetup-2.3.2.exe">下载 Windows 版</a>
+        <p class="sha256" data-sha256="b5bc79de88cbb9f4fe35505a9baf8613672cb0043db810e6638c2ae3a22a386f">点击复制 SHA256</p>
       </div>
 
       <!-- Linux -->
@@ -181,6 +214,7 @@
         <h2 class="platform-name">Linux</h2>
         <p class="platform-desc">Debian / Ubuntu / 其他发行版</p>
         <a class="download-btn" href="https://release.interknot.dpdns.org/latexsnipper_2.3.2_amd64.deb">下载 Linux 版</a>
+        <p class="sha256" data-sha256="4c981ac00cadb7e046a4471b0ac1e7d0979deab26b5b4d5e107a7c9a06d85817">点击复制 SHA256</p>
       </div>
 
       <!-- macOS -->
@@ -189,6 +223,7 @@
         <h2 class="platform-name">macOS</h2>
         <p class="platform-desc">macOS 11+，Apple Silicon</p>
         <a class="download-btn" href="https://release.interknot.dpdns.org/LaTeXSnipper_2.3.2_arm64.dmg">下载 macOS 版</a>
+        <p class="sha256" data-sha256="8ea1cafc3765b936b8a550079780228c2cc1069cbf2fa2c957ac5e7a26fcccfb">点击复制 SHA256</p>
       </div>
     </div>
 
@@ -215,6 +250,26 @@
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
       btn.textContent = isDark ? '☀️' : '🌙'
     })()
+
+    // SHA256 点击复制
+    document.querySelectorAll('.sha256').forEach(function (el) {
+      el.addEventListener('click', function () {
+        const hash = el.getAttribute('data-sha256')
+        if (!hash) return
+        navigator.clipboard.writeText(hash).then(function () {
+          el.classList.add('copied')
+          el.setAttribute('title', '已复制: ' + hash)
+          setTimeout(function () { el.classList.remove('copied') }, 2000)
+        }).catch(function () {
+          // 降级：选中文本
+          const range = document.createRange()
+          range.selectNodeContents(el)
+          const sel = window.getSelection()
+          sel.removeAllRanges()
+          sel.addRange(range)
+        })
+      })
+    })
   </script>
 </body>
 </html>

@@ -61,65 +61,85 @@ export default function CardSlide({ card, isMobile }) {
 
       const rect = sectionRef.current.getBoundingClientRect()
       const vh = window.innerHeight
-      const progress = Math.max(0, Math.min(1, 1 - (rect.top + rect.height) / (vh + rect.height)))
+      const sectionHeight = sectionRef.current.offsetHeight
+      const scrollRange = Math.max(sectionHeight - vh, 1)
+
+      // 根据页面高度 / 视口高度动态计算分段边界
+      // ratio 越小表示滚动空间越大，各阶段可分配更多进度
+      const ratio = vh / scrollRange
+      const scaleFactor = Math.min(1, Math.max(0.3, ratio * 1.2))
+      // 各阶段占 active 区域的比例（基于滚动空间动态调整）
+      const entranceP = 0.06 * scaleFactor
+      const holdP = entranceP + 0.10 * scaleFactor
+      const slideInP = holdP + 0.22 * scaleFactor
+      const detailHoldP = slideInP + 0.18 * scaleFactor
+      const slideOutP = detailHoldP + 0.20 * scaleFactor
+      const exitStartP = slideOutP + 0.08 * scaleFactor
+      // active 范围结束位置 = exitStartP，剩余为退场
 
       const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
       const lerp = (a, b, t) => a + (b - a) * t
       const segment = (p, a, b) => clamp((p - a) / (b - a), 0, 1)
-      // Cinematic easing — folio-2025 style power curves
       const easeOut = (t) => 1 - Math.pow(1 - t, 3)
       const easeInOut = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
 
-      const c = segment(progress, 0, 0.7)
+      const progress = Math.max(0, Math.min(1, 1 - (rect.top + rect.height) / (vh + rect.height)))
 
-      let wrapScale, wrapOpacity, frontWidth, detailLeft, briefOpacity
+      let wrapScale, wrapOpacity, frontX, detailX, briefOpacity
 
-      if (c < 0.05) {
-        const t = easeOut(c / 0.05)
+      if (progress < entranceP) {
+        const t = easeOut(segment(progress, 0, entranceP))
         wrapScale = lerp(0.5, 1, t)
         wrapOpacity = t
-        frontWidth = 100
-        detailLeft = 100
+        frontX = 0
+        detailX = 100
         briefOpacity = 1
-      } else if (c < 0.18) {
+      } else if (progress < holdP) {
         wrapScale = 1
         wrapOpacity = 1
-        frontWidth = 100
-        detailLeft = 100
+        frontX = 0
+        detailX = 100
         briefOpacity = 1
-      } else if (c < 0.36) {
-        const t = easeInOut((c - 0.18) / 0.18)
+      } else if (progress < slideInP) {
+        const t = easeInOut(segment(progress, holdP, slideInP))
         wrapScale = 1
         wrapOpacity = 1
-        frontWidth = lerp(100, 30, t)
-        detailLeft = lerp(100, 30, t)
+        // front 向左滑出，detail 从右侧滑入 → 左右滑动效果
+        frontX = lerp(0, -100, t)
+        detailX = lerp(100, 0, t)
         briefOpacity = lerp(1, 0, t)
-      } else if (c < 0.55) {
+      } else if (progress < detailHoldP) {
         wrapScale = 1
         wrapOpacity = 1
-        frontWidth = 30
-        detailLeft = 30
+        frontX = -100
+        detailX = 0
         briefOpacity = 0
-      } else if (c < 0.7) {
-        const t = easeInOut((c - 0.55) / 0.15)
+      } else if (progress < slideOutP) {
+        const t = easeInOut(segment(progress, detailHoldP, slideOutP))
         wrapScale = 1
         wrapOpacity = 1
-        frontWidth = lerp(30, 100, t)
-        detailLeft = lerp(30, 100, t)
+        frontX = lerp(-100, 0, t)
+        detailX = lerp(0, 100, t)
         briefOpacity = lerp(0, 1, t)
+      } else if (progress < exitStartP) {
+        wrapScale = 1
+        wrapOpacity = 1
+        frontX = 0
+        detailX = 100
+        briefOpacity = 1
       } else {
-        const t = easeOut((c - 0.7) / 0.3)
+        const t = easeOut(segment(progress, exitStartP, 1))
         wrapScale = lerp(1, 0.4, t)
         wrapOpacity = 1 - t
-        frontWidth = 100
-        detailLeft = 100
+        frontX = 0
+        detailX = 100
         briefOpacity = 1
       }
 
       wrapperRef.current.style.transform = `scale(${wrapScale.toFixed(4)})`
       wrapperRef.current.style.opacity = wrapOpacity.toFixed(4)
-      frontRef.current.style.width = `${frontWidth.toFixed(1)}%`
-      detailRef.current.style.left = `${detailLeft.toFixed(1)}%`
+      frontRef.current.style.transform = `translateX(${frontX.toFixed(1)}%)`
+      detailRef.current.style.transform = `translateX(${detailX.toFixed(1)}%)`
 
       const brief = frontRef.current.querySelector('p')
       if (brief) brief.style.opacity = briefOpacity.toFixed(4)

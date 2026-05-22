@@ -117,9 +117,38 @@ export default function MathBackground() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    const isDarkMode = () => {
+      return document.documentElement.getAttribute('data-theme') === 'dark' ||
+        (!document.documentElement.getAttribute('data-theme') &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches)
+    }
+
+    let checkerboardCache = null
+
+    const buildCheckerboardCache = () => {
+      if (!canvas) return
+      checkerboardCache = document.createElement('canvas')
+      checkerboardCache.width = canvas.width
+      checkerboardCache.height = canvas.height
+      const cctx = checkerboardCache.getContext('2d')
+      if (!cctx) return
+      const dark = isDarkMode()
+      const size = 40
+      cctx.fillStyle = dark ? '#0f111a' : '#f6fbff'
+      cctx.fillRect(0, 0, checkerboardCache.width, checkerboardCache.height)
+      cctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.06)'
+      for (let x = 0; x < checkerboardCache.width; x += size * 2) {
+        for (let y = 0; y < checkerboardCache.height; y += size * 2) {
+          cctx.fillRect(x, y, size, size)
+          cctx.fillRect(x + size, y + size, size, size)
+        }
+      }
+    }
+
     const resizeCanvas = () => {
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
+      buildCheckerboardCache()
     }
     resizeCanvas()
     window.addEventListener('resize', resizeCanvas)
@@ -200,27 +229,9 @@ export default function MathBackground() {
 
     initFormulas()
 
-    const isDarkMode = () => {
-      return document.documentElement.getAttribute('data-theme') === 'dark' ||
-        (!document.documentElement.getAttribute('data-theme') &&
-          window.matchMedia('(prefers-color-scheme: dark)').matches)
-    }
-
     const drawCheckerboard = () => {
-      const dark = isDarkMode()
-      const size = 40
-
-      // 背景色
-      ctx.fillStyle = dark ? '#0f111a' : '#f6fbff'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-      // 方格色：白底黑格，黑底白格（提高可见度）
-      ctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.06)'
-      for (let x = 0; x < canvas.width; x += size * 2) {
-        for (let y = 0; y < canvas.height; y += size * 2) {
-          ctx.fillRect(x, y, size, size)
-          ctx.fillRect(x + size, y + size, size, size)
-        }
+      if (checkerboardCache && checkerboardCache.width > 0 && checkerboardCache.height > 0) {
+        ctx.drawImage(checkerboardCache, 0, 0)
       }
     }
 
@@ -297,7 +308,8 @@ export default function MathBackground() {
       const dark = isDarkMode()
       const color = dark ? 'rgba(180, 200, 240, 0.85)' : 'rgba(40, 50, 80, 0.7)'
 
-      formulasRef.current.forEach((f, i) => {
+      for (let i = 0; i < formulasRef.current.length; i++) {
+        const f = formulasRef.current[i]
         f.x += f.vx
         f.y += f.vy
         f.life--
@@ -317,26 +329,29 @@ export default function MathBackground() {
 
         if (f.life <= 0 || f.opacity <= 0) {
           formulasRef.current[i] = createFormula(canvas)
-          return
+          continue
         }
 
         if (f.x < -300 || f.x > canvas.width + 300 ||
             f.y < -50 || f.y > canvas.height + 50) {
           formulasRef.current[i] = createFormula(canvas)
-          return
+          continue
         }
 
-        // 动态公式：周期性切换数值
+        // 跳过几乎不可见的公式
+        if (f.opacity < 0.01) continue
+
+        // 动态公式：周期性切换数值（降低切换频率减少闪烁）
         if (f.type === 'dynamic') {
           f.switchTimer--
           if (f.switchTimer <= 0) {
             f.valueIndex = (f.valueIndex + 1) % f.values.length
             f.content = f.template.replace('{n}', f.values[f.valueIndex])
-            f.switchTimer = Math.floor(Math.random() * 80) + 50
+            f.switchTimer = Math.floor(Math.random() * 150) + 100
           }
         }
 
-        // 四舍五入坐标到 0.5px，消除亚像素抖动
+        // 半像素坐标：Math.round(x*2)/2 确保平滑移动同时避免亚像素模糊
         const drawX = Math.round(f.x * 2) / 2
         const drawY = Math.round(f.y * 2) / 2
 
@@ -356,7 +371,7 @@ export default function MathBackground() {
         }
 
         ctx.restore()
-      })
+      }
     }
 
     const drawTrail = () => {
@@ -376,6 +391,7 @@ export default function MathBackground() {
           continue
         }
 
+        // 半像素坐标平滑移动
         const drawPx = Math.round(p.x * 2) / 2
         const drawPy = Math.round(p.y * 2) / 2
 
@@ -441,7 +457,9 @@ export default function MathBackground() {
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
-    const themeObserver = new MutationObserver(() => {})
+    const themeObserver = new MutationObserver(() => {
+      buildCheckerboardCache()
+    })
     themeObserver.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['data-theme'],

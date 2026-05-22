@@ -2,13 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 
 const SECTIONS = [
   { id: 'hero', label: '首页', icon: 'home' },
-  { id: 'card-0', label: '截取识别', icon: 'camera' },
-  { id: 'card-1', label: '数学工作台', icon: 'sigma' },
-  { id: 'card-2', label: '手写识别', icon: 'pen' },
-  { id: 'card-3', label: '自动排版', icon: 'file' },
-  { id: 'card-4', label: '多格式导出', icon: 'download' },
-  { id: 'card-5', label: '本地模型', icon: 'monitor' },
-  { id: 'card-6', label: '外部模型', icon: 'cloud' },
+  { id: 'carousel', label: '功能介绍', icon: 'layers' },
   { id: 'ending', label: '结尾', icon: 'clock' },
 ]
 
@@ -24,6 +18,7 @@ function Icon({ name, className }) {
     case 'monitor':  return <svg {...p}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
     case 'cloud':    return <svg {...p}><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
     case 'clock':    return <svg {...p}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    case 'layers':   return <svg {...p}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
     default:         return null
   }
 }

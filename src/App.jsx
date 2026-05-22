@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Header from './components/Header'
 import HeroSection from './components/HeroSection'
-import CardSlide from './components/CardSlide'
+import CardCarousel from './components/CardCarousel'
 import EndingSection from './components/EndingSection'
 import BackToTop from './components/BackToTop'
 import MathBackground from './components/MathBackground'
@@ -84,9 +84,7 @@ export default function App() {
       <Header />
       <main>
         <HeroSection />
-        {CARDS.map(card => (
-          <CardSlide key={card.id} card={card} isMobile={isMobile} />
-        ))}
+        <CardCarousel cards={CARDS} isMobile={isMobile} />
         <EndingSection />
       </main>
       <footer className="site-footer">
