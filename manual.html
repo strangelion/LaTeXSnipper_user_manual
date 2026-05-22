@@ -5,13 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5">
   <title>LaTeXSnipper 用户手册</title>
   <link rel="icon" type="image/png" href="assets/images/icon.png">
+  <link rel="preload" href="fonts/NotoSerifCJKsc-Regular.otf" as="fetch" crossorigin="anonymous">
+  <link rel="preload" href="wasm/typst_ts_web_compiler_bg.wasm" as="fetch" crossorigin="anonymous" type="application/wasm">
+  <link rel="preload" href="wasm/typst_ts_renderer_bg.wasm" as="fetch" crossorigin="anonymous" type="application/wasm">
   <script>
     try { var s = localStorage.getItem('latexSnipper-theme'); if (s === 'dark' || s === 'light') document.documentElement.setAttribute('data-theme', s); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="styles/styles.css">
+  <link rel="stylesheet" href="styles/styles.css" media="all">
   <style>
     .spacer-top { height: 60px; }
-    .top-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: var(--hdr-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-color); }
+    .top-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: var(--hdr-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--border-color); will-change: transform; transform: translateZ(0); }
     .top-nav .inner { max-width: var(--max-w); margin: 0 auto; padding: 0 1.25rem; height: 48px; display: flex; align-items: center; gap: 1rem; }
     .top-nav a { color: var(--fg); text-decoration: none; font-size: 0.9rem; }
     .top-nav a:hover { color: var(--accent); }
@@ -54,10 +57,10 @@
     #output svg { width: 100%; height: auto; display: block; margin: 0 !important; padding: 0 !important; border: none; }
     /* 去掉 SVG 之间的所有可能间距 */
     #output svg + svg { margin-top: 0 !important; padding-top: 0 !important; }
-    /* 暗色模式：将 SVG 黑色文字反转为白色 */
-    :root[data-theme="dark"] #output svg { filter: invert(0.88) hue-rotate(180deg); }
+    /* 暗色模式：将 SVG 黑色文字反转为白色（will-change 提升 GPU 合成性能） */
+    :root[data-theme="dark"] #output svg { filter: invert(0.88) hue-rotate(180deg); will-change: filter; }
     @media (prefers-color-scheme: dark) {
-      :root:not([data-theme="light"]) #output svg { filter: invert(0.88) hue-rotate(180deg); }
+      :root:not([data-theme="light"]) #output svg { filter: invert(0.88) hue-rotate(180deg); will-change: filter; }
     }
     .fallback-link { margin-top: 1.5rem; display: inline-block; }
 

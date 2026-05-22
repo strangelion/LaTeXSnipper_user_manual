@@ -852,17 +852,154 @@ def parse_typ(source):
     return ''.join(out)
 
 
+def enhance_volumes(html_content):
+    """将卷标题增强为醒目分割条，但跳过目录块内的标题。"""
+    vol_pattern = re.compile(
+        r'(<p><strong>(第[一二两]卷\s*[··]?\s*.+?)</strong></p>)',
+        re.DOTALL
+    )
+
+    result = []
+    pos = 0
+    for m in vol_pattern.finditer(html_content):
+        start, end = m.start(), m.end()
+        # 检查前面最近的 block-gray 开始/结束标记
+        before = html_content[max(0, start-2000):start]
+        in_block_gray = (
+            '<div class="block block-gray">' in before
+            and before.rfind('<div class="block block-gray">') > before.rfind('</div>')
+        )
+        result.append(html_content[pos:start])
+        if in_block_gray:
+            result.append(m.group(0))
+        else:
+            title = m.group(2)
+            result.append(f'<div class="volume-divider"><div class="volume-divider-inner"><span class="volume-label">{title}</span></div></div>')
+        pos = end
+    result.append(html_content[pos:])
+    return ''.join(result)
+
+
+def build_toc(content):
+    """从生成的 HTML content 中提取标题，构建目录列表。
+    返回 (toc_items, volume_indices)，其中 toc_items 为 (level, id, text) 列表，
+    volume_indices 为每个 volume 在 toc_items 中的起止索引。
+    """
+    toc = []
+    # 提取标准 <h1>/<h2>/<h3> 标题
+    pattern = r'<h([1-3])\s*(?:id="([^"]*)")?\s*>(.*?)</h\1>'
+    for m in re.finditer(pattern, content):
+        level = int(m.group(1))
+        hid = m.group(2) or ''
+        raw_text = m.group(3)
+        text = re.sub(r'<[^>]+>', '', raw_text)
+        if hid:
+            toc.append((level, hid, text))
+
+    # 提取正文中 Typst 语法风格的标题（如 <p>=Heading <sec-id></p>）
+    ph_pattern = r'<p>=+([^<]+)&lt;([^&]+)&gt;\s*</p>'
+    for m in re.finditer(ph_pattern, content):
+        raw_text = m.group(1).strip()
+        hid = m.group(2).strip()
+        level = 1  # 都按 h1 处理，因为无法区分级别
+        text = re.sub(r'<[^>]+>', '', raw_text)
+        if hid and raw_text and not any(hid == h[1] for h in toc):
+            toc.append((level, hid, text))
+
+    # 通过 volume-divider 定位分卷
+    vp = re.compile(r'<span class="volume-label">([^<]+)</span>')
+    vdivs = list(vp.finditer(content))
+    vol_divisions = []
+    for idx, (lvl, hid, txt) in enumerate(toc):
+        pos = content.find(f'id="{hid}"')
+        if pos < 0:
+            pos = content.find(f'href="#{hid}"')
+        vol = 0
+        for vi, vd in enumerate(vdivs):
+            if pos > vd.start():
+                vol = vi + 1
+        if not vol_divisions or vol_divisions[-1]['vol'] != vol:
+            vol_divisions.append({
+                'vol': vol,
+                'start': idx,
+                'title': vdivs[vol-1].group(1) if vol > 0 else ''
+            })
+    return toc, vol_divisions
+
+
 # ── main ──
 def main():
     with open(TYP_FILE, encoding='utf-8') as f:
         source = f.read()
 
     content = parse_typ(source)
+    # 增强分卷分隔
+    content = enhance_volumes(content)
 
     theme_script = (
         "<script>try{var s=localStorage.getItem('latexSnipper-theme');"
         "if(s==='dark'||s==='light')document.documentElement."
         "setAttribute('data-theme',s)}catch(e){}</script>"
+    )
+
+    sidebar_script = (
+        '<script>'
+        '!function(){'
+        'var ls=document.getElementById("sidebar"),lt=document.getElementById("sidebarTrigger"),lc=document.getElementById("sidebarClose");'
+        'var rs=document.getElementById("rightSidebar"),rt=document.getElementById("rightSidebarTrigger"),rc=document.getElementById("rightSidebarClose");'
+        'function co(){if(rs)rs.classList.remove("open")}'
+        'function co2(){if(ls)ls.classList.remove("open")}'
+        'if(ls&&t){'
+        'var h=null;'
+        'function e(){co();ls.classList.add("open");clearTimeout(h);h=null}'
+        'function i(){h=setTimeout(function(){ls.classList.remove("open")},300)}'
+        'lt.addEventListener("mouseenter",e);'
+        'ls.addEventListener("mouseenter",e);'
+        'ls.addEventListener("mouseleave",i);'
+        'if(lc)lc.addEventListener("click",function(){ls.classList.remove("open");clearTimeout(h)});'
+        '}'
+        'if(rs&&t){'
+        'var h2=null;'
+        'function e2(){co2();rs.classList.add("open");clearTimeout(h2);h2=null}'
+        'function i2(){h2=setTimeout(function(){rs.classList.remove("open")},300)}'
+        'rt.addEventListener("mouseenter",e2);'
+        'rs.addEventListener("mouseenter",e2);'
+        'rs.addEventListener("mouseleave",i2);'
+        'if(rc)rc.addEventListener("click",function(){rs.classList.remove("open");clearTimeout(h2)});'
+        '}'
+        '}();'
+        'function tb(a){var r=[];a.forEach(function(l){var i=l.getAttribute("href");if(i&&i[0]==="#"){var e=document.getElementById(i.slice(1));if(e)r.push({el:e,link:l})}});return r}'
+        'function hu(h,a){var t=window.scrollY+120;var c=null;for(var i=0;i<h.length;i++){var o=h[i];if(o.el.offsetTop<=t)c=o;else break}'
+        'a.forEach(function(l){l.classList.remove("active")});if(c)c.link.classList.add("active")}'
+        '!function(){'
+        'var s=document.getElementById("sidebar");if(!s)return;var a=s.querySelectorAll(".toc-list a,.toc-list span");'
+        'a=Array.from(a).filter(function(l){return l.tagName==="A"});if(!a.length)return;var h=tb(a);'
+        'function u(){hu(h,a)}'
+        'window.addEventListener("scroll",u,{passive:true});u()'
+        '}();'
+        '!function(){'
+        'var s=document.getElementById("rightSidebar");if(!s)return;var a=s.querySelectorAll(".rs-list a,.rs-list span");'
+        'a=Array.from(a).filter(function(l){return l.tagName==="A"});if(!a.length)return;var h=tb(a);'
+        'function u(){hu(h,a)}'
+        'window.addEventListener("scroll",u,{passive:true});u()'
+        '}();'
+        '!function(){'
+        'var s=document.getElementById("sidebar");'
+        'if(!s)return;'
+        's.addEventListener("click",function(e){var l=e.target.closest("a");if(l&&l.getAttribute("href")&&l.getAttribute("href")[0]==="#"){'
+        'var t=document.getElementById(l.getAttribute("href").slice(1));if(t){e.preventDefault();t.scrollIntoView({behavior:"smooth",block:"start"})}'
+        's.classList.remove("open")'
+        '}})'
+        '}();'
+        '!function(){'
+        'var s=document.getElementById("rightSidebar");'
+        'if(!s)return;'
+        's.addEventListener("click",function(e){var l=e.target.closest("a");if(l&&l.getAttribute("href")&&l.getAttribute("href")[0]==="#"){'
+        'var t=document.getElementById(l.getAttribute("href").slice(1));if(t){e.preventDefault();t.scrollIntoView({behavior:"smooth",block:"start"})}'
+        's.classList.remove("open")'
+        '}})'
+        '}();'
+        '</script>'
     )
 
     manual_script = (
@@ -903,6 +1040,90 @@ def main():
         '</script>'
     )
 
+    # ── 构建目录（含分卷信息）──
+    toc_items, vol_divisions = build_toc(content)
+    # 生成带分卷分割的 TOC HTML
+    def render_toc_items(toc_items, vol_divisions, cls_prefix):
+        lines = []
+        div_idx = 0
+        next_vol_start = vol_divisions[div_idx + 1]['start'] if div_idx + 1 < len(vol_divisions) else len(toc_items)
+        for i, (level, hid, text) in enumerate(toc_items):
+            # 如果到了分卷边界（且不是第一个标题），插入分卷分割
+            if div_idx + 1 < len(vol_divisions) and i == vol_divisions[div_idx + 1]['start']:
+                vol_title = vol_divisions[div_idx + 1]['title']
+                lines.append(f'<li class="{cls_prefix}-vol-divider"><span>{esc(vol_title)}</span></li>')
+                div_idx += 1
+            indent = '  ' * (level - 1)
+            cls = f'{cls_prefix}-h{level}'
+            lines.append(
+                f'{indent}<li class="{cls}"><a href="#{esc(hid)}">{esc(text)}</a></li>'
+            )
+        return '\n'.join(lines)
+
+    toc_html = render_toc_items(toc_items, vol_divisions, 'toc')
+    right_toc_html = render_toc_items(toc_items, vol_divisions, 'rs')
+
+    sidebar_html = f"""<nav class="sidebar" id="sidebar">
+  <div class="sidebar-inner">
+    <div class="sidebar-header">📖 目录<button class="sidebar-close" id="sidebarClose" title="收起">✕</button></div>
+    <ul class="toc-list">
+{toc_html}
+    </ul>
+  </div>
+</nav>"""
+
+    right_sidebar_html = f"""<aside class="right-sidebar" id="rightSidebar">
+  <div class="rs-inner">
+    <div class="rs-header">📖 目录<button class="rs-close" id="rightSidebarClose" title="收起">✕</button></div>
+    <ul class="rs-list" id="rsList">
+{right_toc_html}
+    </ul>
+  </div>
+</aside>"""
+
+    # ── 增强分卷分隔（将卷标题替换为醒目分割条）──
+    sidebar_css = """\
+  /* ── 左右导航栏共用 ── */
+  .sidebar, .right-sidebar { position: fixed; top: 0; bottom: 0; width: 260px; z-index: 200; background: var(--card-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-color: var(--border-color); border-style: solid; border-width: 0; box-shadow: var(--card-shadow); transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease; opacity: 0; overflow-y: auto; }
+  .sidebar { left: 0; border-right-width: 1px; transform: translateX(-100%); }
+  .right-sidebar { right: 0; border-left-width: 1px; transform: translateX(100%); }
+  .sidebar.open { transform: translateX(0); opacity: 1; }
+  .right-sidebar.open { transform: translateX(0); opacity: 1; }
+  .sidebar-inner, .rs-inner { padding: 1rem 0.75rem; }
+  .sidebar-header, .rs-header { font-weight: 700; font-size: 0.95rem; color: var(--fg); padding-bottom: 0.75rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; }
+  .toc-list, .rs-list { list-style: none; margin: 0; padding: 0; }
+  .toc-list li, .rs-list li { margin: 0; }
+  .toc-list a, .rs-list a { display: block; padding: 0.3rem 0.5rem; color: var(--muted); text-decoration: none; font-size: 0.82rem; border-radius: 6px; transition: background 0.15s, color 0.15s; line-height: 1.4; }
+  .toc-list a:hover, .rs-list a:hover { background: rgba(128,128,128,0.08); color: var(--fg); }
+  .toc-list a.active, .rs-list a.active { color: var(--accent); background: rgba(59,130,246,0.08); font-weight: 600; }
+  .toc-h2, .rs-h2 { padding-left: 1rem; }
+  .toc-h3, .rs-h3 { padding-left: 2rem; }
+  .toc-h2 a, .rs-h2 a { font-size: 0.8rem; }
+  .toc-h3 a, .rs-h3 a { font-size: 0.78rem; }
+  /* ── 分卷分割线 ── */
+  .toc-vol-divider, .rs-vol-divider { padding: 0.6rem 0.5rem 0.3rem; border-top: 1px solid var(--border-color); margin-top: 0.3rem; }
+  .toc-vol-divider span, .rs-vol-divider span { font-size: 0.72rem; font-weight: 600; color: var(--accent); opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; }
+  /* ── 触发器区域 ── */
+  .sidebar-trigger { position: fixed; top: 0; left: 0; width: 24px; bottom: 0; z-index: 199; cursor: default; }
+  .right-sidebar-trigger { position: fixed; top: 0; right: 0; width: 24px; bottom: 0; z-index: 199; cursor: default; }
+  .sidebar-trigger:hover ~ .sidebar, .sidebar:hover, .sidebar.open { transform: translateX(0); opacity: 1; }
+  .right-sidebar-trigger:hover ~ .right-sidebar, .right-sidebar:hover, .right-sidebar.open { transform: translateX(0); opacity: 1; }
+  .sidebar-trigger:hover, .sidebar:hover + .sidebar-trigger { display: none; }
+  .right-sidebar-trigger:hover, .right-sidebar:hover + .right-sidebar-trigger { display: none; }
+  /* ── 收起按钮 ── */
+  .sidebar-close, .rs-close { background: none; border: none; cursor: pointer; font-size: 1.1rem; color: var(--muted); padding: 0.2rem; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: background 0.15s; width: 26px; height: 26px; }
+  .sidebar-close:hover, .rs-close:hover { background: rgba(128,128,128,0.1); color: var(--fg); }
+  /* ── PDF 下载链接 ── */
+  .download-pdf-link { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 0.82rem; color: var(--muted); text-decoration: none; padding: 4px 10px; border-radius: 6px; transition: background 0.15s, color 0.15s; }
+  .download-pdf-link:hover { background: rgba(128,128,128,0.08); color: var(--fg); }
+  /* ── 分卷分隔条 ── */
+  .volume-divider { margin: 2rem 0; position: relative; }
+  .volume-divider-inner { display: flex; align-items: center; justify-content: center; position: relative; }
+  .volume-divider-inner::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), var(--accent), transparent); opacity: 0.25; }
+  .volume-label { position: relative; z-index: 1; background: var(--card-bg); padding: 0.4rem 1.5rem; font-size: 1rem; font-weight: 700; color: var(--accent); border-radius: 20px; border: 1px solid var(--border-color); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  @media (max-width: 768px) { .sidebar, .right-sidebar { width: 220px; } .right-sidebar-trigger { display: none; } .toc-list a, .rs-list a { font-size: 0.78rem; } }
+"""
+
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -913,11 +1134,20 @@ def main():
 <link rel="stylesheet" href="styles/styles.css">
 <style>
 @media (max-width: 600px) {{  html {{ overflow-x: hidden; }}  body.manual {{ overflow-x: hidden; width: 100%; max-width: 100vw; }}  .code-block pre {{ word-break: break-word; white-space: pre-wrap; }}  pre code {{ word-break: break-word; }}  img {{ max-width: 100% !important; height: auto; }}  .code-block {{ max-width: 100%; }} }}
+{sidebar_css}
 </style>
 </head>
 <body class="manual">
-<nav class="top-nav"><div class="inner"><a href="index.html">主页</a><a href="https://github.com/SakuraMathcraft/LaTeXSnipper" target="_blank" rel="noopener">GitHub 仓库</a><button class="theme-toggle" id="themeToggle" title="切换日/夜模式">🌙</button></div></nav>
+<nav class="top-nav"><div class="inner"><a href="index.html">主页</a><a href="https://github.com/SakuraMathcraft/LaTeXSnipper" target="_blank" rel="noopener">GitHub 仓库</a><a class="download-pdf-link" href="https://release.interknot.dpdns.org/LaTeXSnipper_Manual.pdf" target="_blank" rel="noopener">📥 下载 PDF</a><button class="theme-toggle" id="themeToggle" title="切换日/夜模式">🌙</button></div></nav>
 <div class="spacer-top"></div>
+
+<!-- 左侧导航栏触发器 -->
+<div class="sidebar-trigger" id="sidebarTrigger"></div>
+{sidebar_html}
+
+<!-- 右侧导航栏触发器 -->
+<div class="right-sidebar-trigger" id="rightSidebarTrigger"></div>
+{right_sidebar_html}
 
 {content}
 
@@ -1045,6 +1275,7 @@ function copyCode(btn) {{
   }});
 }}
 </script>
+{sidebar_script}
 </body>
 </html>
 """

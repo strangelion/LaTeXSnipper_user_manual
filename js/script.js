@@ -273,11 +273,28 @@
   toggle();
 })();
 
-// ============= Slide 滚动驱动动画 =============
+// ============= Slide 滚动驱动动画（批量读取避免布局抖动）=============
 (function () {
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const lerp = (a, b, t) => a + (b - a) * t;
   let isMobile = window.innerWidth < 768;
+
+  function segment(p, a, b) {
+    return clamp((p - a) / (b - a), 0, 1);
+  }
+
+  // 缓存 DOM 引用，避免每帧 querySelector
+  let heroSection, heroInner, endSection, endInner;
+  let cardSlides = [];
+
+  function cacheElements() {
+    heroSection = document.querySelector('[data-slide="hero"]');
+    heroInner = heroSection && heroSection.querySelector('.slide-inner');
+    endSection = document.querySelector('[data-slide="ending"]');
+    endInner = endSection && endSection.querySelector('.slide-inner');
+    cardSlides = Array.from(document.querySelectorAll('.card-slide'));
+  }
+  cacheElements();
 
   function getProgress(el) {
     const r = el.getBoundingClientRect();
@@ -285,44 +302,46 @@
     return clamp(1 - (r.top + r.height) / (vh + r.height), 0, 1);
   }
 
-  function segment(p, a, b) {
-    return clamp((p - a) / (b - a), 0, 1);
-  }
-
   let raf = null;
+  let cachedVh = window.innerHeight;
 
   function update() {
     raf = null;
 
-    // ── Hero ──
-    const heroSection = document.querySelector('[data-slide="hero"]');
-    if (heroSection) {
-      const inner = heroSection.querySelector('.slide-inner');
-      if (inner) {
-        if (isMobile) {
-          const p = getProgress(heroSection);
-          inner.style.opacity = Math.min(1, (1 - p) * 4).toFixed(4);
-          inner.style.transform = 'none';
-        } else {
-          const range = heroSection.offsetHeight;
-          const raw = clamp(window.scrollY / range, 0, 1);
-          const easeZ = 1 - Math.pow(1 - raw, 2);
-          const scale = lerp(2, 1, clamp(easeZ / 0.65, 0, 1));
-          const opacity = easeZ < 0.65 ? 1 : clamp(1 - (easeZ - 0.65) / 0.35, 0, 1);
+    // 批量读取所有布局信息（只调用一次 getBoundingClientRect 系列）
+    const scrollY = window.scrollY;
+    const heroRect = heroSection && heroSection.getBoundingClientRect();
+    const endRect = endSection && endSection.getBoundingClientRect();
+    const cardData = cardSlides.map(s => ({ el: s, rect: s.getBoundingClientRect() }));
 
-          inner.style.transform = `scale(${scale.toFixed(4)})`;
-          inner.style.opacity = opacity.toFixed(4);
-        }
+    // ── Hero ──
+    if (heroSection && heroInner) {
+      if (isMobile) {
+        const p = clamp(1 - (heroRect.top + heroRect.height) / (cachedVh + heroRect.height), 0, 1);
+        heroInner.style.opacity = Math.min(1, (1 - p) * 4).toFixed(4);
+        heroInner.style.transform = 'none';
+      } else {
+        const range = heroSection.offsetHeight;
+        const raw = clamp(scrollY / range, 0, 1);
+        const easeZ = 1 - Math.pow(1 - raw, 2);
+        const scale = lerp(2, 1, clamp(easeZ / 0.65, 0, 1));
+        const opacity = easeZ < 0.65 ? 1 : clamp(1 - (easeZ - 0.65) / 0.35, 0, 1);
+
+        heroInner.style.transform = `scale(${scale.toFixed(4)})`;
+        heroInner.style.opacity = opacity.toFixed(4);
       }
     }
 
     // ── Card Slides ──
-    document.querySelectorAll('.card-slide').forEach(section => {
-      const p = getProgress(section);
+    for (let ci = 0; ci < cardSlides.length; ci++) {
+      const section = cardSlides[ci];
+      const r = cardData[ci].rect;
+      const p = clamp(1 - (r.top + r.height) / (cachedVh + r.height), 0, 1);
+
       const wrapper = section.querySelector('.card-wrapper');
       const front = section.querySelector('.card-front');
       const detail = section.querySelector('.card-detail');
-      if (!wrapper || !front || !detail) return;
+      if (!wrapper || !front || !detail) continue;
 
       if (isMobile) {
         wrapper.style.transform = `scale(${lerp(0.94, 1, Math.min(1, p * 2.5)).toFixed(4)})`;
@@ -387,17 +406,14 @@
         const brief = front.querySelector('p');
         if (brief) brief.style.opacity = briefOpacity.toFixed(4);
       }
-    });
+    }
 
     // ── Ending ──
-    const endSection = document.querySelector('[data-slide="ending"]');
-    if (endSection) {
-      const inner = endSection.querySelector('.slide-inner');
-      if (inner) {
-        const p = getProgress(endSection);
-        if (isMobile) {
-          inner.style.opacity = Math.min(1, p * 3).toFixed(4);
-          inner.style.transform = 'none';
+    if (endSection && endInner) {
+      const p = clamp(1 - (endRect.top + endRect.height) / (cachedVh + endRect.height), 0, 1);
+      if (isMobile) {
+        endInner.style.opacity = Math.min(1, p * 3).toFixed(4);
+        endInner.style.transform = 'none';
         } else {
           const f = segment(p, 0.1, 0.6);
           inner.style.opacity = f.toFixed(4);
@@ -412,7 +428,13 @@
   }
   window.addEventListener('scroll', onScroll, { passive: true });
   update();
-  window.addEventListener('resize', () => { isMobile = window.innerWidth < 768; update(); });
+  window.addEventListener('resize', () => {
+    isMobile = window.innerWidth < 768;
+    cachedVh = window.innerHeight;
+    // 重缓存 DOM 引用（响应式布局可能改变 DOM 结构）
+    cacheElements();
+    update();
+  });
 })();
 
 // ============= 打字效果 =============

@@ -97,7 +97,7 @@ export default function HeroSection() {
             截取识别 → 手写输入 → 编辑计算 → 导出结果 — <span id="typed">{typed}</span>
           </p>
           <div className="hero-ctas">
-            <a className="btn primary" href="manual.html">阅读用户手册</a>
+            <a className="btn primary" href="user_manual.html">阅读用户手册</a>
             <a className="btn" href="download.html">下载软件</a>
           </div>
         </div>

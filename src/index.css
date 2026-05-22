@@ -89,9 +89,9 @@ html {
   overscroll-behavior: none;
 }
 
-/* 全局平滑过渡 - 主题/调色板切换时渐变 */
+/* 全局平滑过渡 - 主题/调色板切换时渐变（仅 background-color，避免 color 引起逐字重绘） */
 body {
-  transition: background-color 0.5s ease, color 0.5s ease;
+  transition: background-color 0.5s ease;
 }
 
 /* 只对关键 UI 元素做主题过渡，避免全局 * 选择器性能开销 */
@@ -267,7 +267,9 @@ main {
   right: 0;
   z-index: 40;
   border-bottom: 1px solid var(--border-color);
-  transition: background 0.4s ease, border-color 0.4s ease, backdrop-filter 0.4s ease;
+  transition: background 0.4s ease, border-color 0.4s ease;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 .hero-header .hero-inner {
@@ -332,6 +334,8 @@ main {
   min-height: 180vh;
   overflow: hidden;
   scroll-margin-top: 60px;
+  contain: layout style;
+  content-visibility: auto;
 }
 
 .slide-section[data-slide="hero"] {
@@ -952,6 +956,7 @@ main {
     position: relative;
     top: auto;
     height: auto;
+    max-width: 100%;
   }
 
   .slide-inner {
@@ -1080,78 +1085,89 @@ main {
   }
 
   .carousel-slide {
-    padding: 0 0.5rem;
+    padding: 0 0.35rem;
   }
 
   .carousel-card {
     min-height: auto;
+    max-width: 100%;
   }
 
   .carousel-front {
     min-height: auto;
-    padding: 2rem 1.25rem;
-    border-radius: 20px;
+    padding: 1.5rem 1rem;
+    border-radius: 16px;
   }
 
   .carousel-front h3 {
-    font-size: 1.1rem;
-    margin-bottom: 0.4rem;
+    font-size: 1rem;
+    margin-bottom: 0.3rem;
   }
 
   .carousel-front p {
-    font-size: 0.88rem;
-    margin-bottom: 1rem;
+    font-size: 0.82rem;
+    margin-bottom: 0.75rem;
   }
 
   .carousel-detail {
     min-height: auto;
-    padding: 1.5rem 1.25rem;
-    border-radius: 20px;
+    padding: 1.25rem 1rem;
+    border-radius: 16px;
+    align-items: center;
+    text-align: center;
+    justify-content: flex-start;
+    overflow-y: auto;
   }
 
   .carousel-detail-inner {
-    padding-left: 0.5rem;
+    padding-left: 0;
+    border-left: none;
+    max-height: none;
   }
 
   .carousel-detail-inner p {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+    text-align: center;
   }
 
   .carousel-flip-btn {
-    font-size: 0.82rem;
-    padding: 0.4rem 0.9rem;
+    font-size: 0.78rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 8px;
   }
 
   .carousel-arrow {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
   }
 
   .carousel-arrow svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
   }
 
   .carousel-arrow-left {
-    left: 0.25rem;
+    left: 0.15rem;
   }
 
   .carousel-arrow-right {
-    right: 0.25rem;
+    right: 0.15rem;
   }
 
   .carousel-dot {
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
   }
 
   .carousel-dot svg {
-    width: 12px;
-    height: 12px;
+    width: 11px;
+    height: 11px;
   }
 
   .carousel-dots {
-    margin-top: 1rem;
+    margin-top: 0.75rem;
+    gap: 4px;
+    flex-wrap: wrap;
   }
 
   .carousel-counter {
@@ -1167,6 +1183,58 @@ main {
     height: 36px;
     bottom: 1.2rem;
     right: 1.2rem;
+  }
+}
+
+/* 超小屏适配 */
+@media (max-width: 380px) {
+  .carousel-slide {
+    padding: 0 0.2rem;
+  }
+
+  .carousel-front {
+    padding: 1.2rem 0.75rem;
+    border-radius: 14px;
+  }
+
+  .carousel-front h3 {
+    font-size: 0.92rem;
+  }
+
+  .carousel-front p {
+    font-size: 0.78rem;
+  }
+
+  .carousel-detail {
+    padding: 1rem 0.75rem;
+    border-radius: 14px;
+  }
+
+  .carousel-detail-inner p {
+    font-size: 0.76rem;
+  }
+
+  .carousel-dot {
+    width: 20px;
+    height: 20px;
+  }
+
+  .carousel-dot svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  .carousel-dots {
+    gap: 3px;
+  }
+
+  .ending-features {
+    gap: 0.35rem;
+  }
+
+  .ending-feature {
+    font-size: 0.78rem;
+    padding: 0.3rem 0.4rem;
   }
 }
 

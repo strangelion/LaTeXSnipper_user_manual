@@ -72,19 +72,44 @@ export default function EndingSection() {
 
           <div className="ending-features">
             <div className="ending-feature" ref={(el) => setItemRef(el, 0)}>
-              <span className="ending-icon">📸</span>
+              <span className="ending-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              </span>
               <span>截图识别</span>
             </div>
             <div className="ending-feature" ref={(el) => setItemRef(el, 1)}>
-              <span className="ending-icon">✏️</span>
+              <span className="ending-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                  <path d="M15 5l4 4"/>
+                </svg>
+              </span>
               <span>手写输入</span>
             </div>
             <div className="ending-feature" ref={(el) => setItemRef(el, 2)}>
-              <span className="ending-icon">🧮</span>
+              <span className="ending-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="4" y="2" width="16" height="20" rx="2"/>
+                  <line x1="8" y1="6" x2="16" y2="6"/>
+                  <line x1="8" y1="10" x2="12" y2="10"/>
+                  <line x1="8" y1="14" x2="16" y2="14"/>
+                  <line x1="8" y1="18" x2="13" y2="18"/>
+                  <line x1="14" y1="10" x2="16" y2="10"/>
+                </svg>
+              </span>
               <span>计算引擎</span>
             </div>
             <div className="ending-feature" ref={(el) => setItemRef(el, 3)}>
-              <span className="ending-icon">📤</span>
+              <span className="ending-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </span>
               <span>30+ 导出</span>
             </div>
           </div>

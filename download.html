@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5">
   <title>LaTeXSnipper — 下载</title>
   <link rel="icon" type="image/png" href="assets/images/icon.png">
+  <link rel="preconnect" href="https://release.interknot.dpdns.org">
   <script>
     try { var s = localStorage.getItem('latexSnipper-theme'); if (s === 'dark' || s === 'light') document.documentElement.setAttribute('data-theme', s); } catch (e) {}
   </script>
-  <link rel="stylesheet" href="styles/styles.css">
+  <link rel="stylesheet" href="styles/styles.css" media="all">
   <style>
     .spacer-top { height: 60px; }
-    .top-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: var(--hdr-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-color); }
+    .top-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: var(--hdr-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--border-color); will-change: transform; transform: translateZ(0); }
     .top-nav .inner { max-width: var(--max-w); margin: 0 auto; padding: 0 1.25rem; height: 48px; display: flex; align-items: center; gap: 1rem; }
     .top-nav a { color: var(--fg); text-decoration: none; font-size: 0.9rem; }
     .top-nav a:hover { color: var(--accent); }
@@ -54,14 +55,15 @@
       border: 1px solid var(--border-color);
       border-radius: 20px;
       padding: 2.5rem 1.5rem;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       box-shadow: var(--card-shadow);
       transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 1rem;
+      will-change: transform;
     }
 
     .platform-card:hover {
@@ -185,7 +187,7 @@
   <nav class="top-nav">
     <div class="inner">
       <a href="index.html" class="brand-link">LaTeXSnipper</a>
-      <a href="manual.html">用户手册</a>
+      <a href="user_manual.html">用户手册</a>
       <a href="download.html" style="color:var(--accent);font-weight:600;">下载</a>
       <a href="https://github.com/SakuraMathcraft/LaTeXSnipper" target="_blank" rel="noopener">GitHub</a>
       <button class="theme-toggle" id="themeToggle" title="切换日/夜模式">🌙</button>
@@ -229,7 +231,7 @@
 
     <div class="other-info">
       <p>可以从 <a href="https://github.com/SakuraMathcraft/LaTeXSnipper" target="_blank" rel="noopener">GitHub Releases</a> 查看所有版本和发布说明。</p>
-      <p>遇到安装问题？请查阅 <a href="manual.html">用户手册</a> 或在 GitHub 提交 Issue。</p>
+      <p>遇到安装问题？请查阅 <a href="user_manual.html">用户手册</a> 或在 GitHub 提交 Issue。</p>
     </div>
   </div>
 

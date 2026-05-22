@@ -10,95 +10,48 @@ export default function MathBackground() {
   const lastMoveTimeRef = useRef(Date.now())
   const isPageVisibleRef = useRef(true)
 
+  // 常用符号（精简版，减少缓存不命中）
   const MATH_SYMBOLS = [
     '∑', '∫', '∂', '∇', '√', 'π', '∞', '≈', '≠', '≤', '≥', 'Δ', 'Σ',
-    'λ', 'θ', 'α', 'β', 'γ', 'δ', 'ε', 'μ', 'σ', 'τ', 'ω', 'φ', 'ψ', 'η', 'κ', 'ρ',
-    '×', '÷', '±', '∓', '∝', '∠', '⊥', '∥', '∩', '∪', '⊂', '⊃', '∈', '∉',
-    '∀', '∃', '∧', '∨', '⊕', '⊗', '∴', '∵', '∼', '≅', '≡', '≪', '≫',
-    '∏', '∐', '∛', '∜', 'ℕ', 'ℤ', 'ℚ', 'ℝ', 'ℂ', 'ℵ', 'ℶ',
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+    'λ', 'θ', 'α', 'β', 'γ', 'δ', 'ε', 'μ', 'σ', 'τ', 'ω', 'φ', 'ψ',
+    '×', '÷', '±', '∓', '∠', '⊥', '∈', '∩', '∪', '⊂', '⊃',
+    '∀', '∃', '∧', '∨', '⊕', '⊗', '∴', '∵', '∼', '≅', '≡',
+    'ℕ', 'ℤ', 'ℚ', 'ℝ', 'ℂ', 'ℵ',
   ]
   
+  // 精简公式模板（减少内存，保持视觉丰富度）
   const FORMULAS = [
-    // 数学公式
     { type: 'text', content: 'e^{iπ}+1=0' },
     { type: 'text', content: '∫e^{-x²}dx' },
     { type: 'text', content: '∑1/n²' },
     { type: 'text', content: '∇·F=0' },
     { type: 'text', content: 'a²+b²=c²' },
     { type: 'text', content: '∂u/∂t=∇²u' },
-    { type: 'text', content: 'det(A)≠0' },
     { type: 'text', content: 'lim x→∞' },
     { type: 'text', content: 'Δ=b²-4ac' },
     { type: 'text', content: 'φ=(1+√5)/2' },
     { type: 'text', content: 'i²=-1' },
-    { type: 'text', content: '∫₀^∞' },
-    { type: 'text', content: '∑_{n=0}^∞' },
-    { type: 'text', content: "f'(x)=lim" },
-    { type: 'text', content: '∮ E·dl' },
-    // 三角函数
     { type: 'text', content: 'sin²θ+cos²θ=1' },
-    { type: 'text', content: 'sin(2θ)=2sinθcosθ' },
-    { type: 'text', content: 'cos(2θ)=cos²θ-sin²θ' },
     { type: 'text', content: 'tanθ=sinθ/cosθ' },
-    { type: 'text', content: 'cscθ=1/sinθ' },
-    { type: 'text', content: 'secθ=1/cosθ' },
-    { type: 'text', content: 'cotθ=1/tanθ' },
-    { type: 'text', content: 'sin(π/2-θ)=cosθ' },
-    { type: 'text', content: 'sin(π+θ)=-sinθ' },
-    { type: 'text', content: 'sin(α±β)=sinαcosβ±cosαsinβ' },
-    { type: 'text', content: 'cos(α±β)=cosαcosβ∓sinαsinβ' },
-    { type: 'text', content: 'sinh x=(eˣ-e⁻ˣ)/2' },
-    { type: 'text', content: 'cosh x=(eˣ+e⁻ˣ)/2' },
-    { type: 'text', content: 'arcsin x' },
-    { type: 'text', content: 'arccos x' },
-    { type: 'text', content: 'arctan x' },
-    // 物理公式
-    { type: 'text', content: 'F=q(E+v×B)' },
-    { type: 'text', content: 'PV=nRT' },
     { type: 'text', content: 'F=Gm₁m₂/r²' },
-    { type: 'text', content: 'E=hf' },
-    { type: 'text', content: 'KE=½mv²' },
-    { type: 'text', content: 'PE=mgh' },
-    { type: 'text', content: 'ΔxΔp≥ℏ/2' },
-    { type: 'text', content: 'v=fλ' },
-    { type: 'text', content: 'I=V/R' },
-    { type: 'text', content: 'P=IV' },
-    { type: 'text', content: 'F=kx' },
-    { type: 'text', content: 'W=Fd' },
-    { type: 'text', content: 'p=mv' },
-    { type: 'text', content: 'F=BIL' },
-    { type: 'text', content: 'c=λf' },
-    { type: 'text', content: 'τ=r×F' },
-    { type: 'text', content: 'S=k·ln(W)' },
-    { type: 'text', content: 'F=ma' },
     { type: 'text', content: 'E=mc²' },
-    { type: 'text', content: 'KE=½Iω²' },
-    { type: 'text', content: 'E₀=mc²' },
-    { type: 'text', content: 'Γ(n)=(n-1)!!' },
-    { type: 'text', content: '∇·B=0' },
-    { type: 'text', content: '∇×E=-∂B/∂t' },
-    { type: 'text', content: 'E=ℏω' },
-    { type: 'text', content: 'p=ℏk' },
-    // 分式公式
+    { type: 'text', content: 'F=ma' },
+    { type: 'text', content: 'E=hf' },
+    { type: 'text', content: 'ΔxΔp≥ℏ/2' },
+    { type: 'text', content: 'PV=nRT' },
+    { type: 'text', content: 'F=q(E+v×B)' },
+    { type: 'text', content: 'I=V/R' },
+    { type: 'text', content: 'S=k·ln(W)' },
+    // 分式（降低绘制复杂度）
     { type: 'frac', num: 'dv', den: 'dt' },
     { type: 'frac', num: 'Δx', den: 'Δt' },
-    { type: 'frac', num: 'F', den: 'm' },
     { type: 'frac', num: '∂ψ', den: '∂t' },
-    { type: 'frac', num: 'ΔQ', den: 'Δt' },
     { type: 'frac', num: 'ρ', den: 'ε₀' },
-    { type: 'frac', num: '∂u', den: '∂t' },
-    // 动态数值公式（数值会随时间切换）
-    { type: 'dynamic', template: 'sin({n}π)', values: ['0', '¼', '½', '¾', '1', '3/2', '2'] },
-    { type: 'dynamic', template: 'cos({n}°)', values: ['0', '30', '45', '60', '90', '120', '180'] },
-    { type: 'dynamic', template: 'tan({n}°)', values: ['0', '30', '45', '60'] },
-    { type: 'dynamic', template: 'x={n}', values: ['0', '1', '2', '3', '4', '5'] },
-    { type: 'dynamic', template: 'x^{n}', values: ['0', '1', '2', '3', '4'] },
-    { type: 'dynamic', template: '√{n}', values: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'] },
-    { type: 'dynamic', template: 'log_{n}x', values: ['2', '3', '4', '5', '10'] },
-    { type: 'dynamic', template: 'E_n=-{n}/n²', values: ['13.6', '3.4', '1.51', '0.85'] },
-    { type: 'dynamic', template: 'n!={n}', values: ['1', '2', '6', '24', '120', '720'] },
-    { type: 'dynamic', template: 'e^{n}', values: ['0', '1', '2', '3'] },
+    // 动态（减少值数量，加快切换）
+    { type: 'dynamic', template: 'sin({n}π)', values: ['0', '½', '1', '3/2'] },
+    { type: 'dynamic', template: 'x^{n}', values: ['0', '1', '2', '3'] },
+    { type: 'dynamic', template: '√{n}', values: ['0', '2', '4', '9'] },
+    { type: 'dynamic', template: 'n!={n}', values: ['1', '2', '6', '24'] },
   ]
 
   const MATRIX_TEMPLATES = [
@@ -106,8 +59,6 @@ export default function MathBackground() {
     { type: 'matrix', rows: [['1', '0'], ['0', '1']] },
     { type: 'matrix', rows: [['x₁', 'x₂'], ['y₁', 'y₂']] },
     { type: 'matrix', rows: [['a', 'b', 'c'], ['d', 'e', 'f'], ['g', 'h', 'i']] },
-    { type: 'matrix', rows: [['1', '0', '0'], ['0', '1', '0'], ['0', '0', '1']] },
-    { type: 'matrix', rows: [['σ₁', '0'], ['0', 'σ₂']] },
   ]
 
   useEffect(() => {
@@ -127,18 +78,21 @@ export default function MathBackground() {
 
     const buildCheckerboardCache = () => {
       if (!canvas) return
+      const w = canvas.width, h = canvas.height
+      // 缓存大小不变时不重建（避免 resize 频繁重绘）
+      if (checkerboardCache && checkerboardCache.width === w && checkerboardCache.height === h) return
       checkerboardCache = document.createElement('canvas')
-      checkerboardCache.width = canvas.width
-      checkerboardCache.height = canvas.height
+      checkerboardCache.width = w
+      checkerboardCache.height = h
       const cctx = checkerboardCache.getContext('2d')
       if (!cctx) return
       const dark = isDarkMode()
       const size = 40
       cctx.fillStyle = dark ? '#0f111a' : '#f6fbff'
-      cctx.fillRect(0, 0, checkerboardCache.width, checkerboardCache.height)
+      cctx.fillRect(0, 0, w, h)
       cctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.06)'
-      for (let x = 0; x < checkerboardCache.width; x += size * 2) {
-        for (let y = 0; y < checkerboardCache.height; y += size * 2) {
+      for (let x = 0; x < w; x += size * 2) {
+        for (let y = 0; y < h; y += size * 2) {
           cctx.fillRect(x, y, size, size)
           cctx.fillRect(x + size, y + size, size, size)
         }
@@ -174,8 +128,9 @@ export default function MathBackground() {
         vx: spreadX,
         vy: spreadY,
       })
-      if (trailRef.current.length > 30) {
-        trailRef.current.splice(0, trailRef.current.length - 30)
+      // 减少尾部粒子最大数量，降低每帧绘制开销
+      if (trailRef.current.length > 20) {
+        trailRef.current.splice(0, trailRef.current.length - 20)
       }
       lastMoveTimeRef.current = Date.now()
     }
@@ -183,7 +138,9 @@ export default function MathBackground() {
 
     const initFormulas = () => {
       formulasRef.current = []
-      const count = Math.max(15, Math.floor((canvas.width * canvas.height) / 50000))
+      // 减少粒子密度 ≈ 每 70000 px² 一个，移动端进一步减半
+      const density = window.innerWidth < 768 ? 100000 : 70000
+      const count = Math.max(10, Math.min(30, Math.floor((canvas.width * canvas.height) / density)))
       for (let i = 0; i < count; i++) {
         formulasRef.current.push(createFormula(canvas))
       }
@@ -241,23 +198,23 @@ export default function MathBackground() {
       ctx.textAlign = 'center'
       ctx.fillStyle = color
 
-      const numWidth = ctx.measureText(num).width
-      const denWidth = ctx.measureText(den).width
-      const lineWidth = Math.max(numWidth, denWidth) + 8
-      const lineY = y + 2
+      const nw = ctx.measureText(num).width
+      const dw = ctx.measureText(den).width
+      const lw = Math.max(nw, dw) + 8
+      const ly = y + 2
 
       ctx.textBaseline = 'bottom'
-      ctx.fillText(num, x, lineY - 3)
+      ctx.fillText(num, x, ly - 3)
 
       ctx.strokeStyle = color
       ctx.lineWidth = 1.5
       ctx.beginPath()
-      ctx.moveTo(x - lineWidth / 2, lineY)
-      ctx.lineTo(x + lineWidth / 2, lineY)
+      ctx.moveTo(x - lw / 2, ly)
+      ctx.lineTo(x + lw / 2, ly)
       ctx.stroke()
 
       ctx.textBaseline = 'top'
-      ctx.fillText(den, x, lineY + 4)
+      ctx.fillText(den, x, ly + 4)
       ctx.textBaseline = 'middle'
     }
 
@@ -307,6 +264,9 @@ export default function MathBackground() {
     const drawFormulas = () => {
       const dark = isDarkMode()
       const color = dark ? 'rgba(180, 200, 240, 0.85)' : 'rgba(40, 50, 80, 0.7)'
+      const skipOutOfBounds = (f) =>
+        f.x < -100 || f.x > canvas.width + 100 ||
+        f.y < -50 || f.y > canvas.height + 50
 
       for (let i = 0; i < formulasRef.current.length; i++) {
         const f = formulasRef.current[i]
@@ -316,32 +276,20 @@ export default function MathBackground() {
 
         if (f.phase === 'in') {
           f.opacity += f.fadeSpeed
-          if (f.opacity >= f.targetOpacity) {
-            f.phase = 'hold'
-          }
+          if (f.opacity >= f.targetOpacity) f.phase = 'hold'
         } else if (f.phase === 'hold') {
-          if (f.life < 80) {
-            f.phase = 'out'
-          }
+          if (f.life < 80) f.phase = 'out'
         } else if (f.phase === 'out') {
           f.opacity -= f.fadeSpeed
         }
 
-        if (f.life <= 0 || f.opacity <= 0) {
+        if (f.life <= 0 || f.opacity <= 0 || skipOutOfBounds(f)) {
           formulasRef.current[i] = createFormula(canvas)
           continue
         }
+        if (f.opacity < 0.02) continue
 
-        if (f.x < -300 || f.x > canvas.width + 300 ||
-            f.y < -50 || f.y > canvas.height + 50) {
-          formulasRef.current[i] = createFormula(canvas)
-          continue
-        }
-
-        // 跳过几乎不可见的公式
-        if (f.opacity < 0.01) continue
-
-        // 动态公式：周期性切换数值（降低切换频率减少闪烁）
+        // 动态公式切换
         if (f.type === 'dynamic') {
           f.switchTimer--
           if (f.switchTimer <= 0) {
@@ -351,9 +299,9 @@ export default function MathBackground() {
           }
         }
 
-        // 半像素坐标：Math.round(x*2)/2 确保平滑移动同时避免亚像素模糊
-        const drawX = Math.round(f.x * 2) / 2
-        const drawY = Math.round(f.y * 2) / 2
+        // 使用浮点坐标让 canvas 亚像素抗锯齿平滑渲染
+        const drawX = f.x
+        const drawY = f.y
 
         ctx.save()
         ctx.globalAlpha = Math.max(0, f.opacity)
@@ -391,9 +339,9 @@ export default function MathBackground() {
           continue
         }
 
-        // 半像素坐标平滑移动
-        const drawPx = Math.round(p.x * 2) / 2
-        const drawPy = Math.round(p.y * 2) / 2
+        // 整数坐标（减少计算量）
+        const drawPx = Math.floor(p.x)
+        const drawPy = Math.floor(p.y)
 
         ctx.save()
         ctx.globalAlpha = Math.max(0, p.life * 0.8)
@@ -407,26 +355,22 @@ export default function MathBackground() {
     }
 
     const spawnIdleParticle = () => {
-      // 鼠标静止超过 800ms 时，在鼠标当前位置附近生成下落粒子
-      const idleTime = Date.now() - lastMoveTimeRef.current
-      if (idleTime < 800) return
-
+      // 鼠标静止超过 1.2s 时生成下落粒子
+      if (Date.now() - lastMoveTimeRef.current < 1200) return
       const mx = mouseRef.current.x
-      const my = mouseRef.current.y
-      // 鼠标尚未移动过（还在默认位置），不生成
       if (mx < 0) return
 
       trailRef.current.push({
         x: mx + (Math.random() - 0.5) * 30,
-        y: my + (Math.random() - 0.5) * 20,
+        y: mouseRef.current.y + (Math.random() - 0.5) * 20,
         symbol: MATH_SYMBOLS[Math.floor(Math.random() * MATH_SYMBOLS.length)],
         life: 1,
         size: Math.random() * 6 + 12,
         vx: (Math.random() - 0.5) * 0.3,
         vy: Math.random() * 0.3 + 0.2,
       })
-      if (trailRef.current.length > 30) {
-        trailRef.current.splice(0, trailRef.current.length - 30)
+      if (trailRef.current.length > 20) {
+        trailRef.current.splice(0, trailRef.current.length - 20)
       }
     }
 
@@ -434,15 +378,14 @@ export default function MathBackground() {
       timeRef.current++
 
       if (!isPageVisibleRef.current || document.hidden) {
-        // 页面在后台，跳过渲染，继续请求下一帧以检测恢复
         animationRef.current = requestAnimationFrame(animate)
         return
       }
 
       drawCheckerboard()
       drawFormulas()
-      // 每 ~20 帧尝试生成一个静止粒子
-      if (timeRef.current % 20 === 0) {
+      // 每 ~40 帧尝试生成一个静止粒子（原 20 帧，减半）
+      if (timeRef.current % 40 === 0) {
         spawnIdleParticle()
       }
       drawTrail()

@@ -1374,7 +1374,7 @@ py -3.11 -m venv tools\deps\python311
   #v(0.6em)
 ]
 
-== MathCraft OCR 项目介绍 <sec-mathcraft-intro>
+= MathCraft OCR 项目介绍 <sec-mathcraft-intro>
 
 MathCraft OCR 是 LaTeXSnipper 内置的本地公式识别引擎，基于 ONNX 运行时实现离线 OCR，无需联网即可识别数学公式。
 
@@ -1409,7 +1409,7 @@ python -m mathcraft_ocr run --image formula.png
 
 *在 LaTeXSnipper 中使用：* 在设置页的"选择识别模型"中选择 #text(weight: "bold")[内置模型] 即可启用本地 MathCraft OCR；识别类型可选公式、混合（文字+公式）或纯文字。如需强制使用 CPU 推理（例如避免 GPU 兼容性问题），请参考下方的环境变量设置。
 
-== 模型集与识别配置
+= 模型集与识别配置
 
 当前 `mathcraft-ocr` PyPI 包版本为 `0.2.0`。模型权重使用 MathCraft Models `v1.0.0` 发布集，包含 #text(weight: "bold")[4 个 ONNX 模型]：
 
@@ -1451,13 +1451,13 @@ python -m mathcraft_ocr run --image formula.png
   - #text(weight: "bold")[`mixed`] — 文本+公式混合文档 → Markdown 结构化文本
 ]
 
-== 识别效果展示
+= 识别效果展示
 
 以下示例来自 MathCraft 的结构化块输出。彩色框标注了检测到的角色、顺序、分栏信息和置信度分数。
 
 #v(0.4em)
 
-=== 英文数学论文：Abstract Algebra (p.18)
+== 英文数学论文：Abstract Algebra (p.18)
 
 公式密集的英文数学论文页面，包含大量行内公式和展示公式。
 
@@ -1465,7 +1465,7 @@ python -m mathcraft_ocr run --image formula.png
 
 #v(0.5em)
 
-=== 英文期刊：Dynamics Journal (p.5)
+== 英文期刊：Dynamics Journal (p.5)
 
 以展示公式为主的期刊页面，包含公式编号、标签、页眉和页码。
 
@@ -1473,7 +1473,7 @@ python -m mathcraft_ocr run --image formula.png
 
 #v(0.5em)
 
-=== 中文讲义：Lecture Note (p.1)
+== 中文讲义：Lecture Note (p.1)
 
 中文数学文档页面，包含文本与公式混合排版。
 
@@ -1481,13 +1481,13 @@ python -m mathcraft_ocr run --image formula.png
 
 #v(0.5em)
 
-=== 极限与级数：Limits and Series (p.1)
+== 极限与级数：Limits and Series (p.1)
 
 稀疏的标题/封面式页面，用于验证版面分析稳定性。
 
 #image("assets/images/mathcraft_limits_series.png", width: 100%)
 
-== 性能参考
+= 性能参考
 
 以下为本地 `block_layout_regression_v4` 基准测试数据（CUDA 环境）：
 #v(0.5em)
@@ -1518,7 +1518,7 @@ python -m mathcraft_ocr run --image formula.png
   - 结构化块输出：标题、段落、展示公式、页眉、页码、分栏
 ])
 
-== 环境变量设置指南 <sec-envvar>
+= 环境变量设置指南 <sec-envvar>
 
 许多解决方案需要设置环境变量（如 `MATHCRAFT_FORCE_ORT_CPU`、`MATHCRAFT_HOME` 等）：
 #v(0.5em)
