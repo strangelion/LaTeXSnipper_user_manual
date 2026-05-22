@@ -225,22 +225,46 @@ code { font-family: var(--mono); font-size: .88em; }
 
 /* ── 回到顶部按钮 ── */
 .back-to-top {
-  position: fixed; bottom: 2rem; right: 2rem;
-  border-radius: 12px;
-  background: var(--accent); color: #fff;
-  border: none; cursor: pointer;
-  opacity: 0; visibility: hidden;
-  transition: opacity 0.3s, visibility 0.3s, transform 0.25s;
-  z-index: 1000; box-shadow: 0 2px 14px rgba(0,0,0,0.18);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 8px 12px 6px; gap: 1px;
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--accent, #3b82f6);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0.35s ease, transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease;
+  z-index: 1000;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
-.back-to-top .btt-arrow { font-size: 1.15rem; line-height: 1; }
-.back-to-top .btt-text { font-size: 0.7rem; line-height: 1; }
+.back-to-top .btt-icon {
+  width: 18px;
+  height: 18px;
+}
+.back-to-top:hover .btt-icon {
+  animation: btt-scroll 1.2s ease-in-out infinite;
+}
+@keyframes btt-scroll {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
 .back-to-top.visible { opacity: 1; visibility: visible; }
-.back-to-top:hover { transform: scale(1.08); }
-.back-to-top.faded { opacity: 0.32; }
-.back-to-top.faded:hover { opacity: 1; transform: scale(1.08); }
+.back-to-top:hover { transform: scale(1.12); box-shadow: 0 6px 24px rgba(0,0,0,0.28); }
+.back-to-top:active { transform: scale(0.95); }
+.back-to-top.faded { opacity: 0.3; }
+.back-to-top.faded:hover { opacity: 1; transform: scale(1.12); }
+
+@media (max-width: 600px) {
+  .back-to-top { width: 36px; height: 36px; bottom: 1.2rem; right: 1.2rem; }
+}
 
 @media (max-width: 600px) {
 	body.manual { padding: 1rem .8rem 2rem; font-size: 14px; }

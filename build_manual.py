@@ -910,7 +910,7 @@ def main():
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LaTeXSnipper 用户手册 v2.3.2</title>
 {theme_script}
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles/styles.css">
 </head>
 <body class="manual">
 <nav class="top-nav"><div class="inner"><a href="index.html">主页</a><a href="https://github.com/SakuraMathcraft/LaTeXSnipper" target="_blank" rel="noopener">GitHub 仓库</a><button class="theme-toggle" id="themeToggle" title="切换日/夜模式">🌙</button></div></nav>
@@ -918,7 +918,12 @@ def main():
 
 {content}
 
-<button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部"><span class="btt-arrow">▲</span><span class="btt-text">顶部</span></button>
+<button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
+    <svg class="btt-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 19V5" />
+      <path d="M5 12l7-7 7 7" />
+    </svg>
+  </button>
 <script>
 // 主题切换
 (function() {{

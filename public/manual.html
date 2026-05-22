@@ -60,9 +60,14 @@
     .back-to-top .btt-icon {
       width: 18px;
       height: 18px;
-      transition: transform 0.3s ease;
     }
-    .back-to-top:hover .btt-icon { transform: translateY(-2px); }
+    .back-to-top:hover .btt-icon {
+      animation: btt-scroll 1.2s ease-in-out infinite;
+    }
+    @keyframes btt-scroll {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
     .back-to-top.visible { opacity: 1; visibility: visible; }
     .back-to-top:hover { transform: scale(1.12); box-shadow: 0 6px 24px rgba(0,0,0,0.28); }
     .back-to-top:active { transform: scale(0.95); }
