@@ -1,13 +1,15 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import Header from './components/Header'
 import HeroSection from './components/HeroSection'
-import CardCarousel from './components/CardCarousel'
-import EndingSection from './components/EndingSection'
-import BackToTop from './components/BackToTop'
 import MathBackground from './components/MathBackground'
 import ScrollProgress from './components/ScrollProgress'
-import SectionIndicator from './components/SectionIndicator'
 import './App.css'
+
+// 非首屏组件延迟加载，减少初始 JS 体积
+const CardCarousel = lazy(() => import('./components/CardCarousel'))
+const EndingSection = lazy(() => import('./components/EndingSection'))
+const BackToTop = lazy(() => import('./components/BackToTop'))
+const SectionIndicator = lazy(() => import('./components/SectionIndicator'))
 
 const CARDS = [
   {
@@ -72,16 +74,24 @@ export default function App() {
       <MathBackground />
       <ScrollProgress />
       <Header />
-      <main>
+      <main id="main-content" aria-label="主内容">
         <HeroSection />
-        <CardCarousel cards={CARDS} />
-        <EndingSection />
+        <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
+          <CardCarousel cards={CARDS} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <EndingSection />
+        </Suspense>
       </main>
       <footer className="site-footer">
         <div className="container">© 2026 LaTeXSnipper — 开源项目</div>
       </footer>
-      <SectionIndicator />
-      <BackToTop />
+      <Suspense fallback={null}>
+        <SectionIndicator />
+      </Suspense>
+      <Suspense fallback={null}>
+        <BackToTop />
+      </Suspense>
     </div>
   )
 }

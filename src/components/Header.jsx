@@ -73,14 +73,15 @@ export default function Header() {
           />
           <a href="index.html">LaTeXSnipper</a>
         </div>
-        <nav className="main-nav">
+        <nav className="main-nav" aria-label="主导航">
           <a href="download.html">下载</a>
           <a href="user_manual.html">用户手册</a>
-          <a href="https://github.com/SakuraMathcraft/LaTeXSnipper" target="_blank" rel="noopener">GitHub</a>
-          <button 
-            className="theme-toggle" 
-            id="themeToggle" 
+          <a href="https://github.com/SakuraMathcraft/LaTeXSnipper" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <button
+            className="theme-toggle"
+            id="themeToggle"
             title="切换日/夜模式"
+            aria-label={isDark ? "切换到亮色模式" : "切换到暗色模式"}
             onClick={handleThemeToggle}
           >
             {isDark ? (

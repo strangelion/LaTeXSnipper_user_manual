@@ -6,9 +6,11 @@ export default function MathBackground() {
   const mouseRef = useRef({ x: -100, y: -100 })
   const trailRef = useRef([])
   const formulasRef = useRef([])
-  const timeRef = useRef(0)
+  const frameRef = useRef(0)
   const lastMoveTimeRef = useRef(Date.now())
   const isPageVisibleRef = useRef(true)
+  const resizeTimerRef = useRef(null)
+  const isTouchingRef = useRef(false)
 
   // 常用符号（精简版，减少缓存不命中）
   const MATH_SYMBOLS = [
@@ -137,41 +139,90 @@ export default function MathBackground() {
     }
 
     const resizeCanvas = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
+      // 背景效果使用 1x 分辨率即可（高 DPI 下肉眼几乎看不出差异）
+      const dpr = 1
+      canvas.width = window.innerWidth * dpr
+      canvas.height = window.innerHeight * dpr
+      canvas.style.width = window.innerWidth + 'px'
+      canvas.style.height = window.innerHeight + 'px'
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       buildCheckerboardCache()
     }
     resizeCanvas()
-    window.addEventListener('resize', resizeCanvas)
 
-    const handleMouseMove = (e) => {
-      const prev = mouseRef.current
-      const dx = e.clientX - prev.x
-      const dy = e.clientY - prev.y
+    const debouncedResize = () => {
+      clearTimeout(resizeTimerRef.current)
+      resizeTimerRef.current = setTimeout(resizeCanvas, 150)
+    }
+    window.addEventListener('resize', debouncedResize)
+
+    const spawnTrailParticle = (cx, cy, prevX, prevY, fromTouch = false) => {
+      const dx = cx - prevX
+      const dy = cy - prevY
       const speed = Math.sqrt(dx * dx + dy * dy)
-      mouseRef.current = { x: e.clientX, y: e.clientY }
-
-      // 速度越快，粒子越沿运动方向散开；静止时自然下落
       const isMoving = speed > 2
-      const spreadX = isMoving ? dx * 0.15 + (Math.random() - 0.5) * 1.2 : (Math.random() - 0.5) * 1.0
-      const spreadY = isMoving ? dy * 0.15 + (Math.random() - 0.5) * 1.2 : Math.random() * 0.8 + 0.3
+
+      // 触摸/移动时沿运动方向散开；静止时向下散落
+      const spreadX = isMoving
+        ? dx * 0.18 + (Math.random() - 0.5) * 1.5
+        : (Math.random() - 0.5) * 1.2
+      const spreadY = isMoving
+        ? dy * 0.18 + (Math.random() - 0.5) * 1.5
+        : Math.random() * 0.6 + 0.4
 
       trailRef.current.push({
-        x: e.clientX + (Math.random() - 0.5) * 6,
-        y: e.clientY + (Math.random() - 0.5) * 6,
+        x: cx + (Math.random() - 0.5) * 8,
+        y: cy + (Math.random() - 0.5) * 8,
         symbol: MATH_SYMBOLS[Math.floor(Math.random() * MATH_SYMBOLS.length)],
         life: 1,
-        size: Math.random() * 8 + 14,
+        size: Math.random() * 8 + (fromTouch ? 16 : 14),
         vx: spreadX,
         vy: spreadY,
       })
-      // 减少尾部粒子最大数量，降低每帧绘制开销
-      if (trailRef.current.length > 20) {
-        trailRef.current.splice(0, trailRef.current.length - 20)
+      // 尾翼粒子最大数量
+      const maxTrail = fromTouch ? 15 : 25
+      if (trailRef.current.length > maxTrail) {
+        trailRef.current.splice(0, trailRef.current.length - maxTrail)
       }
+    }
+
+    const handleMouseMove = (e) => {
+      const prev = mouseRef.current
+      mouseRef.current = { x: e.clientX, y: e.clientY }
+      spawnTrailParticle(e.clientX, e.clientY, prev.x, prev.y, false)
       lastMoveTimeRef.current = Date.now()
     }
     window.addEventListener('mousemove', handleMouseMove)
+
+    // 触摸事件 —— 手机端手指附近生成符号
+    const handleTouchStart = (e) => {
+      if (e.touches.length === 0) return
+      isTouchingRef.current = true
+      const t = e.touches[0]
+      mouseRef.current = { x: t.clientX, y: t.clientY }
+      // 触摸开始瞬间生成一簇粒子
+      for (let i = 0; i < 5; i++) {
+        spawnTrailParticle(t.clientX, t.clientY, t.clientX - 10, t.clientY, true)
+      }
+      lastMoveTimeRef.current = Date.now()
+    }
+
+    const handleTouchMove = (e) => {
+      if (e.touches.length === 0) return
+      const t = e.touches[0]
+      const prev = mouseRef.current
+      mouseRef.current = { x: t.clientX, y: t.clientY }
+      spawnTrailParticle(t.clientX, t.clientY, prev.x, prev.y, true)
+      lastMoveTimeRef.current = Date.now()
+    }
+
+    const handleTouchEnd = () => {
+      isTouchingRef.current = false
+    }
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true })
+    window.addEventListener('touchmove', handleTouchMove, { passive: true })
+    window.addEventListener('touchend', handleTouchEnd)
 
     const initFormulas = () => {
       formulasRef.current = []
@@ -307,10 +358,8 @@ export default function MathBackground() {
 
       for (let i = 0; i < formulasRef.current.length; i++) {
         const f = formulasRef.current[i]
-        f.x += f.vx
-        f.y += f.vy
-        f.life--
 
+        // 生命周期阶段管理（已移至 animate 更新位置）
         if (f.phase === 'in') {
           f.opacity += f.fadeSpeed
           if (f.opacity >= f.targetOpacity) f.phase = 'hold'
@@ -361,15 +410,15 @@ export default function MathBackground() {
 
     const drawTrail = () => {
       const dark = isDarkMode()
-      const color = dark ? 'rgba(96, 165, 250, 0.9)' : 'rgba(37, 99, 235, 0.9)'
+      const color = dark ? 'rgba(96, 165, 250, 0.95)' : 'rgba(37, 99, 235, 0.9)'
 
       for (let i = trailRef.current.length - 1; i >= 0; i--) {
         const p = trailRef.current[i]
-        p.life -= 0.008
+        p.life -= 0.007
         p.x += p.vx
         p.y += p.vy
-        p.vy += 0.045
-        p.vx *= 0.995
+        p.vy += 0.055
+        p.vx *= 0.993
 
         if (p.life <= 0) {
           trailRef.current.splice(i, 1)
@@ -392,27 +441,29 @@ export default function MathBackground() {
     }
 
     const spawnIdleParticle = () => {
-      // 鼠标静止超过 1.2s 时生成下落粒子
-      if (Date.now() - lastMoveTimeRef.current < 1200) return
+      // 鼠标/手指静止超过 1s 时生成下落粒子
+      if (Date.now() - lastMoveTimeRef.current < 1000) return
       const mx = mouseRef.current.x
       if (mx < 0) return
 
+      const isTouch = isTouchingRef.current
       trailRef.current.push({
         x: mx + (Math.random() - 0.5) * 30,
         y: mouseRef.current.y + (Math.random() - 0.5) * 20,
         symbol: MATH_SYMBOLS[Math.floor(Math.random() * MATH_SYMBOLS.length)],
         life: 1,
-        size: Math.random() * 6 + 12,
+        size: Math.random() * 6 + (isTouch ? 14 : 12),
         vx: (Math.random() - 0.5) * 0.3,
-        vy: Math.random() * 0.3 + 0.2,
+        vy: Math.random() * 0.6 + 0.4,
       })
-      if (trailRef.current.length > 20) {
-        trailRef.current.splice(0, trailRef.current.length - 20)
+      const maxTrail = isTouch ? 15 : 25
+      if (trailRef.current.length > maxTrail) {
+        trailRef.current.splice(0, trailRef.current.length - maxTrail)
       }
     }
 
     const animate = () => {
-      timeRef.current++
+      frameRef.current++
 
       if (!isPageVisibleRef.current || document.hidden) {
         animationRef.current = requestAnimationFrame(animate)
@@ -420,9 +471,21 @@ export default function MathBackground() {
       }
 
       drawCheckerboard()
+
+      // 偶数帧更新粒子位置并绘制，奇数帧仅绘制（减少一半计算量）
+      const updatePhysics = frameRef.current % 2 === 0
+      if (updatePhysics) {
+        for (let i = 0; i < formulasRef.current.length; i++) {
+          const f = formulasRef.current[i]
+          f.x += f.vx
+          f.y += f.vy
+          f.life--
+        }
+      }
       drawFormulas()
-      // 每 ~40 帧尝试生成一个静止粒子（原 20 帧，减半）
-      if (timeRef.current % 40 === 0) {
+
+      // 每 ~30 帧尝试生成静止粒子
+      if (frameRef.current % 30 === 0) {
         spawnIdleParticle()
       }
       drawTrail()
@@ -446,8 +509,12 @@ export default function MathBackground() {
     })
 
     return () => {
-      window.removeEventListener('resize', resizeCanvas)
+      window.removeEventListener('resize', debouncedResize)
+      clearTimeout(resizeTimerRef.current)
       window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('touchstart', handleTouchStart)
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleTouchEnd)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       if (animationRef.current) cancelAnimationFrame(animationRef.current)
       themeObserver.disconnect()

@@ -7,8 +7,6 @@ node_modules/
 dist/*
 !dist/index.html
 !dist/assets/
-public/fonts/
-public/wasm/
 *.svg
 user_manual.md
 user_manual.pdf

@@ -13,6 +13,10 @@ sync_manual.py — 在 user_manual.typ 与 public/user_manual.typ 之间双向�
 import os
 import sys
 import time
+
+# Windows 终端 GBK 编码兼容：强制 stdout 使用 UTF-8
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 import hashlib
 import argparse
 
