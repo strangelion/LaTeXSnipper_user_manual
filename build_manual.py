@@ -1134,7 +1134,7 @@ def main():
     # ── 增强分卷分隔（将卷标题替换为醒目分割条）──
     sidebar_css = """\
   /* ── 左右导航栏共用 ── */
-  .sidebar, .right-sidebar { position: fixed; top: 0; bottom: 0; width: 260px; z-index: 200; background: var(--card-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-color: var(--border-color); border-style: solid; border-width: 0; box-shadow: var(--card-shadow); transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease; opacity: 0; overflow-y: auto; }
+  .sidebar, .right-sidebar { position: fixed; top: 0; bottom: 0; width: 260px; z-index: 1100; background: var(--card-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-color: var(--border-color); border-style: solid; border-width: 0; box-shadow: var(--card-shadow); transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease; opacity: 0; overflow-y: auto; }
   .sidebar { left: 0; border-right-width: 1px; transform: translateX(-100%); }
   .right-sidebar { right: 0; border-left-width: 1px; transform: translateX(100%); }
   .sidebar.open { transform: translateX(0); opacity: 1; }
@@ -1160,6 +1160,7 @@ def main():
   .top-nav-trigger:hover ~ .top-nav, .top-nav:hover { transform: translateY(0) !important; opacity: 1; }
   .at-top .top-nav { transform: translateY(0) !important; opacity: 1; }
   .spacer-top { height: 0; }
+  .at-top .spacer-top { height: 56px; }
   /* ── 触发器区域 ── */
   .sidebar-trigger { position: fixed; top: 0; left: 0; width: 24px; bottom: 0; z-index: 1000; cursor: default; }
   .right-sidebar-trigger { position: fixed; top: 0; right: 0; width: 24px; bottom: 0; z-index: 1000; cursor: default; }
