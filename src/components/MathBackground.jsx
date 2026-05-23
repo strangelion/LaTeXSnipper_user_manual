@@ -90,15 +90,49 @@ export default function MathBackground() {
       const cctx = checkerboardCache.getContext('2d')
       if (!cctx) return
       const dark = isDarkMode()
-      const size = 40
+
+      // 底色
       cctx.fillStyle = dark ? '#0f111a' : '#f6fbff'
       cctx.fillRect(0, 0, w, h)
-      cctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.06)'
-      for (let x = 0; x < w; x += size * 2) {
-        for (let y = 0; y < h; y += size * 2) {
-          cctx.fillRect(x, y, size, size)
-          cctx.fillRect(x + size, y + size, size, size)
+
+      // 数学方格纸网格：小格 20px，粗格 100px
+      const smallSize = 20
+      const bigSize = 100
+
+      // 小网格线（浅）
+      cctx.strokeStyle = dark ? 'rgba(200, 220, 255, 0.05)' : 'rgba(60, 120, 200, 0.08)'
+      cctx.lineWidth = 1
+      for (let x = 0; x <= w; x += smallSize) {
+        if (x % bigSize !== 0) {
+          cctx.beginPath()
+          cctx.moveTo(x + 0.5, 0)
+          cctx.lineTo(x + 0.5, h)
+          cctx.stroke()
         }
+      }
+      for (let y = 0; y <= h; y += smallSize) {
+        if (y % bigSize !== 0) {
+          cctx.beginPath()
+          cctx.moveTo(0, y + 0.5)
+          cctx.lineTo(w, y + 0.5)
+          cctx.stroke()
+        }
+      }
+
+      // 粗网格线（略深）
+      cctx.strokeStyle = dark ? 'rgba(200, 220, 255, 0.12)' : 'rgba(60, 120, 200, 0.15)'
+      cctx.lineWidth = 1
+      for (let x = 0; x <= w; x += bigSize) {
+        cctx.beginPath()
+        cctx.moveTo(x + 0.5, 0)
+        cctx.lineTo(x + 0.5, h)
+        cctx.stroke()
+      }
+      for (let y = 0; y <= h; y += bigSize) {
+        cctx.beginPath()
+        cctx.moveTo(0, y + 0.5)
+        cctx.lineTo(w, y + 0.5)
+        cctx.stroke()
       }
     }
 

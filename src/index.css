@@ -35,6 +35,7 @@ html {
   scroll-behavior: smooth;
   overscroll-behavior: none;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -368,6 +369,8 @@ main {
   max-width: 1024px;
   will-change: transform, opacity;
   position: relative;
+  /* 让卡片在视口中居中（以背景格子为参考 8:6 → 居中） */
+  padding-left: 15px;
 }
 
 .carousel-track {
@@ -390,13 +393,24 @@ main {
   align-items: center;
   justify-content: center;
   padding: 0 clamp(0.35rem, 2vw, 1rem);
+  perspective: 1200px;
+  perspective-origin: center;
 }
 
-/* Carousel card — 3D 翻牌效果 */
+/* Carousel card — 3D 翻牌 + 侧边缩小效果 */
 .carousel-card {
   width: 100%;
-  max-width: 900px;
-  perspective: 1200px;
+  max-width: 820px;
+  transform-style: preserve-3d;
+  transform: scale(0.82);
+  opacity: 0.88;
+  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s ease;
+  will-change: transform, opacity;
+}
+
+.carousel-card.active {
+  transform: scale(1);
+  opacity: 1;
 }
 
 /* 翻牌内层容器：前面板撑开高度，反面板 absolute 叠在上方 */
@@ -405,6 +419,7 @@ main {
   transform-style: preserve-3d;
   transition: transform 0.65s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 24px;
+  overflow: hidden;
   will-change: transform;
 }
 

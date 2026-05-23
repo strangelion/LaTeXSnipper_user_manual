@@ -55,6 +55,9 @@ export default function CardCarousel({ cards }) {
     const track = trackRef.current
     if (!track) return
     track.style.transition = 'none'
+    // Also disable card transitions to prevent scale/opacity animation on jump
+    const cards = track.querySelectorAll('.carousel-card')
+    for (const c of cards) c.style.transition = 'none'
     // Force reflow to ensure the style change takes effect immediately
     void track.offsetHeight
   }, [])
@@ -64,6 +67,9 @@ export default function CardCarousel({ cards }) {
     const track = trackRef.current
     if (!track) return
     track.style.transition = ''
+    // Re-enable card transitions
+    const cards = track.querySelectorAll('.carousel-card')
+    for (const c of cards) c.style.transition = ''
   }, [])
 
   // After transition ends, check if we need to jump back to the real card
@@ -198,25 +204,25 @@ export default function CardCarousel({ cards }) {
       const segment = (p, a, b) => clamp((p - a) / (b - a), 0, 1)
       const lerp = (a, b, t) => a + (b - a) * t
 
-      // Entrance: 0-25% → fade in & scale up
-      // Active: 25-75% → stable, navigation active
-      // Exit: 75-100% → fade out & scale down
-      let scale, opacity
+      // Entrance: 0-25% → 从侧面旋转进入
+      // Active: 25-75% → 稳定
+      // Exit: 75-100% → 旋转退出
+      let rotation, opacity
 
       if (progress < 0.25) {
         const t = easeOut(segment(progress, 0, 0.25))
-        scale = lerp(0.7, 1, t)
+        rotation = lerp(-18, 0, t)
         opacity = t
       } else if (progress < 0.75) {
-        scale = 1
+        rotation = 0
         opacity = 1
       } else {
         const t = easeOut(segment(progress, 0.75, 1))
-        scale = lerp(1, 0.7, t)
+        rotation = lerp(0, 18, t)
         opacity = 1 - t
       }
 
-      wrapper.style.transform = `scale(${scale.toFixed(4)})`
+      wrapper.style.transform = `perspective(2000px) rotateY(${rotation.toFixed(1)}deg)`
       wrapper.style.opacity = opacity.toFixed(4)
     }
 
@@ -228,7 +234,7 @@ export default function CardCarousel({ cards }) {
   // Compute the real card index for display (dots / counter)
   const realIndex = ((current - 1) % total + total) % total
 
-  // 测量并均衡前后面板高度，确保翻牌后内容完整可见
+  // check and balance front/detail heights to prevent overflow when flipping
   useEffect(() => {
     const inners = document.querySelectorAll('.carousel-card-inner');
     inners.forEach((inner) => {
@@ -265,9 +271,9 @@ export default function CardCarousel({ cards }) {
         <div className="carousel-container" ref={wrapperRef}>
           {/* Track — uses loopCards for infinite seamless scrolling */}
           <div className="carousel-track" ref={trackRef} style={{ transform: `translateX(-${current * 100}%)` }}>
-            {loopCards.current.map((card) => (
+            {loopCards.current.map((card, i) => (
               <div key={card.id} className="carousel-slide">
-                <div className={`carousel-card ${flipped[card.id] ? 'show-detail' : ''}`}>
+                <div className={`carousel-card${i === current ? ' active' : ''}${flipped[card.id] ? ' show-detail' : ''}`}>
                   <div className="carousel-card-inner">
                     {/* Front face */}
                     <div className="carousel-front">
