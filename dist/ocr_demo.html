@@ -92,6 +92,16 @@
 
   <div class="usage-counter" id="usageCounter"></div>
 
+  <div style="display:none;" id="unlockPanel">
+    <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:1rem;">
+      <input type="text" id="unlockCode" placeholder="输入验证码" maxlength="6" autocomplete="off"
+        style="width:100px;padding:.35rem .5rem;border-radius:6px;border:1px solid var(--border-color);background:var(--card-bg);color:var(--fg);font-size:.9rem;text-align:center;letter-spacing:.3em;font-family:monospace;">
+      <button onclick="verifyUnlock()" style="background:var(--accent);color:#fff;border:none;padding:.35rem .75rem;border-radius:6px;cursor:pointer;font-size:.8rem;">验证</button>
+      <button onclick="document.getElementById('unlockPanel').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;">✕</button>
+    </div>
+    <div id="unlockMsg" style="text-align:center;font-size:.8rem;margin-bottom:.5rem;"></div>
+  </div>
+
   <div class="drop-zone" id="dropZone">
     <input type="file" id="fileInput" accept="image/*">
     <div id="dropContent">
@@ -171,7 +181,47 @@
     setStatus('error', '加载失败', false);
   }
 
-  // ====== 设备指纹 + 使用次数限制 + 冷却 ======
+  // ====== TOTP 解锁（验证码发到 Worker 后端校验） ======
+  const UNLOCK_HOURS = 4;
+
+  function isUnlocked() {
+    try {
+      const data = JSON.parse(localStorage.getItem('ocr_unlock') || '{}');
+      return data.expiry && Date.now() < data.expiry;
+    } catch(e) { return false; }
+  }
+
+  window.verifyUnlock = async function() {
+    const code = document.getElementById('unlockCode').value.trim();
+    const msg = document.getElementById('unlockMsg');
+    if (!/^\d{6}$/.test(code)) { msg.textContent = '请输入 6 位数字验证码'; msg.style.color = '#ef4444'; return; }
+    try {
+      const resp = await fetch('/api/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        const expiry = Date.now() + UNLOCK_HOURS * 3600 * 1000;
+        localStorage.setItem('ocr_unlock', JSON.stringify({ expiry: expiry }));
+        msg.textContent = '已解锁！' + UNLOCK_HOURS + ' 小时内无限使用';
+        msg.style.color = '#22c55e';
+        dropZone.style.opacity = '1';
+        dropZone.style.pointerEvents = 'auto';
+        dropZone.title = '';
+        updateUsageDisplay();
+        setStatus('ready', '已解锁，无限次数使用！拖入公式图片或 Ctrl+V 粘贴截图', false);
+        setTimeout(function(){ document.getElementById('unlockPanel').style.display = 'none'; }, 2000);
+      } else {
+        msg.textContent = '验证码错误，请重试';
+        msg.style.color = '#ef4444';
+      }
+    } catch(e) {
+      msg.textContent = '网络错误，请重试';
+      msg.style.color = '#ef4444';
+    }
+  };
   const DAILY_LIMIT = 20;
   const COOLDOWN_MS = 5000; // 两次识别之间至少间隔 5 秒
   let lastRecognitionTime = 0;
@@ -211,16 +261,18 @@
     updateUsageDisplay();
   }
   function updateUsageDisplay() {
-    const u = getUsage();
-    const remaining = Math.max(0, DAILY_LIMIT - u.count);
-    const pct = Math.round(u.count / DAILY_LIMIT * 100);
+    var unlocked = isUnlocked();
+    var u = getUsage();
+    var remaining = unlocked ? '∞' : Math.max(0, DAILY_LIMIT - u.count);
+    var pct = unlocked ? 0 : Math.round(u.count / DAILY_LIMIT * 100);
     usageCounter.innerHTML =
       '<span>今日剩余 <strong>' + remaining + '</strong> / ' + DAILY_LIMIT + ' 次</span>' +
-      '<span style="margin-left:1rem;color:' + (remaining <= 5 ? '#ef4444' : 'var(--muted)') + ';">设备 ' + deviceFingerprint() + '</span>';
-    if (remaining <= 0) {
+      (unlocked ? '<span style="margin-left:.5rem;color:#22c55e;">🔓 已解锁</span>' : '');
+    if (!unlocked && remaining <= 0) {
+    if (!unlocked && remaining <= 0) {
       dropZone.style.opacity = '0.5';
       dropZone.style.pointerEvents = 'none';
-      dropZone.title = '今日识别次数已用完';
+      dropZone.title = '今日识别次数已用完，请明天再来或使用验证码解锁';
       setStatus('error', '今日识别次数已用完，请明天再来', false);
     }
   }
@@ -478,11 +530,13 @@
       return;
     }
 
-    // 次数检查
-    const u = getUsage();
-    if (u.count >= DAILY_LIMIT) {
-      showError('今日识别次数已用完（' + DAILY_LIMIT + '次/天），请明天再来');
-      return;
+    // 次数检查（已解锁则跳过）
+    if (!isUnlocked()) {
+      const u = getUsage();
+      if (u.count >= DAILY_LIMIT) {
+        showError('今日识别次数已用完（' + DAILY_LIMIT + '次/天），请明天再来');
+        return;
+      }
     }
 
     // 最小图片尺寸检查
@@ -500,7 +554,7 @@
       try {
         const result = await recognize(img);
         lastRecognitionTime = Date.now();
-        incrementUsage();
+        if (!isUnlocked()) incrementUsage();
         resultCode.textContent = result.latex;
         confidence.textContent = '置信度 ' + (result.confidence * 100).toFixed(1) + '%';
         resultCard.classList.add('show');
@@ -551,6 +605,11 @@
       setTimeout(() => { copyBtn.textContent = '复制 LaTeX'; copyBtn.classList.remove('copied'); }, 1500);
     });
   };
+
+  // 开发者入口：URL 加 ?dev 显示解锁面板
+  if (/[?&]dev(&|$)/.test(location.search)) {
+    document.getElementById('unlockPanel').style.display = 'block';
+  }
 
   // 启动
   init();

@@ -188,6 +188,46 @@ function cleanupRateLimit() {
   }
 }
 
+// ── TOTP 验证（RFC 6238, SHA-1, 30s, 6 digits） ──
+async function verifyTOTP(secret, token) {
+  try {
+    // Base32 decode
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    const s = secret.toUpperCase().replace(/=+$/g, '').replace(/\s/g, '');
+    const bits = [];
+    for (let i = 0; i < s.length; i++) {
+      const v = alphabet.indexOf(s[i]);
+      if (v < 0) continue;
+      bits.push((v >> 4) & 1, (v >> 3) & 1, (v >> 2) & 1, (v >> 1) & 1, v & 1);
+    }
+    const bytes = [];
+    for (let i = 0; i + 7 < bits.length; i += 8) {
+      bytes.push((bits[i] << 7) | (bits[i + 1] << 6) | (bits[i + 2] << 5) | (bits[i + 3] << 4) |
+                 (bits[i + 4] << 3) | (bits[i + 5] << 2) | (bits[i + 6] << 1) | bits[i + 7]);
+    }
+    const key = await crypto.subtle.importKey('raw', new Uint8Array(bytes),
+      { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+
+    const now = Math.floor(Date.now() / 1000);
+    const counterBase = Math.floor(now / 30);
+
+    // 检查 ±1 窗口 (90s 容差)
+    for (let offset = -1; offset <= 1; offset++) {
+      let counter = counterBase + offset;
+      const cb = new Uint8Array(8);
+      for (let i = 7; i >= 0; i--) { cb[i] = counter & 0xFF; counter >>= 8; }
+      const hmac = new Uint8Array(await crypto.subtle.sign('HMAC', key, cb));
+      const p = hmac[19] & 0x0F;
+      const bin = ((hmac[p] & 0x7F) << 24) | (hmac[p + 1] << 16) | (hmac[p + 2] << 8) | hmac[p + 3];
+      const otp = String(bin % 1000000).padStart(6, '0');
+      if (otp === token) return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
 // ── 压缩支持 ──
 // 对文本类响应启用 gzip/brotli 压缩，大幅减小传输体积
 const COMPRESSIBLE_TYPES = new Set([
@@ -441,6 +481,25 @@ export default {
         version: "2.3.6",
         timestamp: new Date().toISOString(),
       });
+    }
+
+    // ── TOTP 解锁 API ──
+    if (path === "/api/unlock" && request.method === "POST") {
+      try {
+        const body = await request.json();
+        const token = String(body.code || "").trim();
+        if (!/^\d{6}$/.test(token)) {
+          return jsonResponse({ ok: false, error: "invalid code format" });
+        }
+        const secret = env.ADMIN_KEY;
+        if (!secret) {
+          return jsonResponse({ ok: false, error: "server not configured" });
+        }
+        const valid = await verifyTOTP(secret, token);
+        return jsonResponse({ ok: valid });
+      } catch (e) {
+        return jsonResponse({ ok: false, error: e.message });
+      }
     }
 
     try {
