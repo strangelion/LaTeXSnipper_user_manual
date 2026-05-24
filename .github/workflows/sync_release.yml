@@ -1,0 +1,109 @@
+name: 同步 Release 到 R2
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # 每 6 小时检查一次
+  workflow_dispatch:        # 手动触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 检查 Release 更新
+        id: check
+        run: |
+          RELEASE=$(curl -sL -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/SakuraMathcraft/LaTeXSnipper/releases/tags/v2.3.2_Final_Stable")
+          PUBLISHED=$(echo "$RELEASE" | jq -r '.published_at')
+          echo "published=$PUBLISHED" >> $GITHUB_OUTPUT
+          echo "release=$RELEASE" > /tmp/release.json
+
+      - name: 读取上次同步时间
+        id: state
+        run: |
+          if [ -f .release_state.json ]; then
+            LAST=$(jq -r '.last_sync' .release_state.json)
+            echo "last=$LAST" >> $GITHUB_OUTPUT
+          else
+            echo "last=never" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 下载并上传 R2
+        if: steps.check.outputs.published != steps.state.outputs.last
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          echo "发现更新，开始同步..."
+          mkdir -p .sync_tmp
+
+          # 下载 + 算 SHA256 + 上传 R2
+          declare -A ASSETS=(
+            ["LaTeXSnipperSetup-2.3.2.exe"]="LaTeXSnipperSetup-2.3.2.exe"
+            ["latexsnipper_2.3.2_amd64.deb"]="latexsnipper_2.3.2_amd64.deb"
+            ["LaTeXSnipper_2.3.2_arm64.dmg"]="LaTeXSnipper_2.3.2_arm64.dmg"
+            ["LaTeXSnipper_User_Manual.pdf"]="LaTeXSnipper_Manual.pdf"
+          )
+
+          for NAME in "${!ASSETS[@]}"; do
+            R2KEY="${ASSETS[$NAME]}"
+            URL="https://github.com/SakuraMathcraft/LaTeXSnipper/releases/download/v2.3.2_Final_Stable/$NAME"
+            echo "⬇ 下载 $NAME"
+            curl -sL "$URL" -o ".sync_tmp/$NAME"
+
+            SHA=$(sha256sum ".sync_tmp/$NAME" | cut -d' ' -f1)
+            echo "  SHA256: $SHA"
+
+            # 删除旧文件
+            npx wrangler r2 object delete "release/$R2KEY" 2>/dev/null || true
+            # 上传新文件
+            npx wrangler r2 object put "release/$R2KEY" --file ".sync_tmp/$NAME"
+
+            # 记录 SHA256
+            echo "$R2KEY:$SHA" >> /tmp/sha256.txt
+          done
+
+          rm -rf .sync_tmp
+
+      - name: 更新 download.html SHA256
+        run: |
+          python3 << 'EOF'
+          import re
+          with open('download.html', 'r', encoding='utf-8') as f:
+              html = f.read()
+
+          with open('/tmp/sha256.txt', 'r') as f:
+              for line in f:
+                  r2name, sha = line.strip().split(':')
+                  # 匹配对应平台的 data-sha256
+                  patterns = {
+                      'LaTeXSnipperSetup-2.3.2.exe': r'<a class="download-btn" href="[^"]*\.exe">',
+                      'latexsnipper_2.3.2_amd64.deb': r'<a class="download-btn" href="[^"]*\.deb">',
+                      'LaTeXSnipper_2.3.2_arm64.dmg': r'<a class="download-btn" href="[^"]*\.dmg">',
+                  }
+                  if r2name in patterns:
+                      # 找到按钮后紧跟的 sha256
+                      m = re.search(patterns[r2name] + r'\s*</a>\s*<p class="sha256" data-sha256="[^"]*"',
+                                    html)
+                      if m:
+                          html = html[:m.start()] + re.sub(
+                              r'data-sha256="[^"]*"',
+                              f'data-sha256="{sha}"',
+                              m.group()
+                          ) + html[m.end():]
+                          print(f"  ✓ {r2name} SHA256 updated")
+          with open('download.html', 'w', encoding='utf-8') as f:
+              f.write(html)
+          EOF
+
+      - name: 保存同步状态
+        run: |
+          echo '{"last_sync":"${{ steps.check.outputs.published }}"}' > .release_state.json
+
+      - name: 提交更新
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add download.html .release_state.json
+          git diff --staged --quiet || (git commit -m "chore: 自动同步 Release SHA256" && git push)

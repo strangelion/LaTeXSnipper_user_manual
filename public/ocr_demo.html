@@ -110,7 +110,7 @@
     <div id="dropContent">
       <div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
       <div>拖入公式截图 · 点击上传 · <kbd style="background:var(--border-color);padding:2px 8px;border-radius:4px;">Ctrl+V</kbd> 粘贴</div>
-      <div style="font-size:0.8rem;opacity:0.6;margin-top:0.5rem;">Win+Shift+S 截图后在此页面按 Ctrl+V 即可识别<br>网页版为轻量演示，识别效果可能与桌面客户端存在差异</div>
+      <div style="font-size:0.8rem;opacity:0.6;margin-top:0.5rem;">Win+Shift+S 截图后在此页面按 Ctrl+V 即可识别<br>网页版提供基础识别效果，桌面客户端内置专属优化引擎</div>
     </div>
     <img id="preview" style="display:none;" alt="预览">
   </div>
@@ -133,7 +133,7 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.all.min.js"></script>
 <script>
 (async function() {
   const MODEL_BASE = '/models/mathcraft-formula-rec';
@@ -352,7 +352,7 @@
       );
       setStatus('loading', '正在加载编码器到内存…', true);
       encoderSession = await ort.InferenceSession.create(encoderBuf, {
-        executionProviders: ['wasm'],
+        executionProviders: ['webgl', 'wasm'],
         graphOptimizationLevel: 'all',
       });
 
@@ -362,7 +362,7 @@
       );
       setStatus('loading', '正在加载解码器到内存…', true);
       decoderSession = await ort.InferenceSession.create(decoderBuf, {
-        executionProviders: ['wasm'],
+        executionProviders: ['webgl', 'wasm'],
         graphOptimizationLevel: 'all',
       });
     } catch(e) {
@@ -506,9 +506,8 @@
   async function init() {
     try {
       // 配置 WASM 后端
-      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/';
-      ort.env.wasm.numThreads = 1;
-      ort.env.wasm.simd = true;
+      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
+      // 优先使用 WebGL 后端，避免 WASM 兼容问题
 
       setStatus('loading', '正在加载分词器…', true);
       await loadTokenizer();
