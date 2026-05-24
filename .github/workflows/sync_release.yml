@@ -2,31 +2,76 @@ name: 同步 Release 到 R2
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
-  workflow_dispatch:
+    - cron: '0 */12 * * *'  # 每 12 小时检查一次 API（轻量）
+  workflow_dispatch:          # 手动触发强制全量同步
 
 permissions:
   contents: write
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_sync: ${{ steps.decide.outputs.should_sync }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 检查是否需要同步
+        id: decide
+        run: |
+          SHOULD="false"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SHOULD="true"
+            echo "手动触发，强制同步"
+          else
+            RELEASE=$(curl -sL -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/SakuraMathcraft/LaTeXSnipper/releases/tags/v2.3.2_Final_Stable")
+            PUBLISHED=$(echo "$RELEASE" | jq -r '.published_at')
+            echo "Release published: $PUBLISHED"
+
+            if [ -f .release_state.json ]; then
+              LAST=$(jq -r '.last_sync' .release_state.json)
+              echo "Last sync: $LAST"
+              if [ "$PUBLISHED" != "$LAST" ]; then
+                SHOULD="true"
+                echo "检测到更新！"
+              else
+                echo "未变化，跳过"
+              fi
+            else
+              SHOULD="true"
+              echo "首次运行，执行同步"
+            fi
+          fi
+          echo "should_sync=$SHOULD" >> $GITHUB_OUTPUT
+          # 保存当前时间戳用于下次比较
+          echo "$RELEASE" | jq -r '{last_sync: .published_at}' > .release_state.json
+
+      - name: 保存状态文件
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .release_state.json
+          git diff --staged --quiet || (git commit -m "chore: 更新同步状态" && git push)
+
   sync:
+    needs: check
+    if: needs.check.outputs.should_sync == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: 下载 Release 文件并计算 SHA256
+      - name: 下载并上传 R2
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           mkdir -p .sync_tmp
-
           declare -A ASSETS=(
             ["LaTeXSnipperSetup-2.3.2.exe"]="LaTeXSnipperSetup-2.3.2.exe"
             ["latexsnipper_2.3.2_amd64.deb"]="latexsnipper_2.3.2_amd64.deb"
             ["LaTeXSnipper_2.3.2_arm64.dmg"]="LaTeXSnipper_2.3.2_arm64.dmg"
             ["LaTeXSnipper_User_Manual.pdf"]="LaTeXSnipper_Manual.pdf"
           )
-
           for NAME in "${!ASSETS[@]}"; do
             R2KEY="${ASSETS[$NAME]}"
             URL="https://github.com/SakuraMathcraft/LaTeXSnipper/releases/download/v2.3.2_Final_Stable/$NAME"
@@ -34,28 +79,23 @@ jobs:
             curl -sL "$URL" -o ".sync_tmp/$NAME"
             SHA=$(sha256sum ".sync_tmp/$NAME" | cut -d' ' -f1)
             echo "  SHA256: $SHA"
-
-            # 删除旧 R2 文件并上传新文件
-            npx wrangler r2 object delete "release/$R2KEY" 2>/dev/null || true
-            npx wrangler r2 object put "release/$R2KEY" --file ".sync_tmp/$NAME"
-
+            npx wrangler r2 object delete "release/$R2KEY" --remote 2>/dev/null || true
+            npx wrangler r2 object put "release/$R2KEY" --file ".sync_tmp/$NAME" --remote
             echo "$R2KEY:$SHA" >> /tmp/sha256.txt
           done
           rm -rf .sync_tmp
 
-      - name: 更新 download.html SHA256（仅当不同时）
+      - name: 更新 download.html SHA256
         run: |
           python3 << 'PYEOF'
           import re
           with open('download.html', 'r', encoding='utf-8') as f:
               html = f.read()
-
           sha_map = {}
           with open('/tmp/sha256.txt', 'r') as f:
               for line in f:
                   r2name, sha = line.strip().split(':')
                   sha_map[r2name] = sha
-
           pairs = [
               ('LaTeXSnipperSetup-2.3.2.exe',  sha_map.get('LaTeXSnipperSetup-2.3.2.exe', '')),
               ('latexsnipper_2.3.2_amd64.deb', sha_map.get('latexsnipper_2.3.2_amd64.deb', '')),
@@ -71,8 +111,6 @@ jobs:
               if new_html != html:
                   html = new_html
                   print(f"  ✓ {filename} SHA256 updated → {sha[:16]}...")
-              else:
-                  print(f"  - {filename} SHA256 already correct")
           with open('download.html', 'w', encoding='utf-8') as f:
               f.write(html)
           PYEOF
