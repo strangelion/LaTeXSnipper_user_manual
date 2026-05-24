@@ -13,9 +13,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "sync": "python sync_manual.py --watch",
-    "sync:once": "python sync_manual.py",
-    "build": "npm run sync:once && vite build && npm run build:manual",
+    "build": "vite build && npm run build:manual",
     "build:manual": "node scripts/copy-assets.cjs",
     "preview": "vite preview",
     "deploy": "wrangler deploy",

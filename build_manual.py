@@ -1196,9 +1196,10 @@ def main():
   .sidebar.open { transform: translateX(0); opacity: 1; }
   .right-sidebar.open { transform: translateX(0); opacity: 1; }
   /* 目录头和叉号 sticky 固定，不随目录滚动 */
-  .sidebar-header, .rs-header { position: sticky; top: 0; z-index: 2; background: var(--card-bg); font-weight: 700; font-size: 0.95rem; color: var(--fg); padding: 0.75rem 0.75rem; margin: 0; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; gap: 6px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-  /* 左侧边栏: 图标+标题 在左，叉号在右(内侧) */
-  /* 右侧边栏: 叉号在左(内侧)，图标+标题 在右 — 通过 HTML 顺序实现 */
+  .sidebar-header, .rs-header { position: sticky; top: 0; z-index: 2; background: var(--card-bg); font-weight: 700; font-size: 0.95rem; color: var(--fg); padding: 0.75rem 0.75rem; margin: 0; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; gap: 6px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  /* 叉号绝对定位在内侧：左栏叉号在右，右栏叉号在左 */
+  .sidebar-close { position: absolute; right: 0.75rem; }
+  .rs-close { position: absolute; left: 0.75rem; }
   .sidebar-icon { flex-shrink: 0; }
   .sidebar-inner, .rs-inner { flex: 1; overflow-y: auto; padding: 0.5rem 0.75rem 1rem; }
   .toc-list, .rs-list { list-style: none; margin: 0; padding: 0; }
