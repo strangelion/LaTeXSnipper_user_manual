@@ -3,6 +3,19 @@ main = "worker.js"
 compatibility_date = "2026-05-20"
 workers_dev = true
 
+# ── R2 模型存储（OCR 模型文件） ──
+# 创建 R2 Bucket 后用 wrangler 上传模型：
+#   wrangler r2 bucket create latexSnipper-models
+#   wrangler r2 object put latexSnipper-models/models/mathcraft-formula-rec/encoder_model.onnx --file=public/models/mathcraft-formula-rec/encoder_model.onnx
+#   wrangler r2 object put latexSnipper-models/models/mathcraft-formula-rec/decoder_model.onnx --file=public/models/mathcraft-formula-rec/decoder_model.onnx
+#   wrangler r2 object put latexSnipper-models/models/mathcraft-formula-rec/tokenizer.json --file=public/models/mathcraft-formula-rec/tokenizer.json
+#   wrangler r2 object put latexSnipper-models/models/mathcraft-formula-rec/generation_config.json --file=public/models/mathcraft-formula-rec/generation_config.json
+#   wrangler r2 object put latexSnipper-models/models/mathcraft-formula-rec/config.json --file=public/models/mathcraft-formula-rec/config.json
+#   wrangler r2 object put latexSnipper-models/models/mathcraft-formula-rec/special_tokens_map.json --file=public/models/mathcraft-formula-rec/special_tokens_map.json
+#   wrangler r2 object put latexSnipper-models/models/mathcraft-formula-rec/tokenizer_config.json --file=public/models/mathcraft-formula-rec/tokenizer_config.json
+# 然后设置 R2 Bucket 为公开，或使用 R2 自定义域名
+# 将下面 vars 中的 R2_MODEL_BASE 替换为你的 R2 公开 URL
+
 # ── 分支部署 ──
 # 非 master 分支自动部署为预览版本
 # 部署到 workers.dev，URL 格式：<分支名>.latexsnipper.<子域名>.workers.dev
@@ -15,7 +28,7 @@ workers_dev = false
 # routes = [
 #   "your-domain.com/*",
 # ]
-vars = { GITHUB_BRANCH = "master", DEPLOY_ENV = "production" }
+vars = { GITHUB_BRANCH = "master", DEPLOY_ENV = "production", R2_MODEL_BASE = "https://release.interknot.dpdns.org" }
 
 # ── 预览环境 ──
 [env.preview]

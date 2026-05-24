@@ -8,12 +8,15 @@ export default defineConfig({
     assetsDir: 'assets',
     rollupOptions: {
       output: {
+        // React 核心单独分包，利用浏览器缓存（版本升级前不会变）
         manualChunks: {
-          // React 核心单独分包，利用浏览器缓存（版本升级前不会变）
           vendor: ['react', 'react-dom'],
         },
       },
     },
+  },
+  worker: {
+    format: 'es',
   },
   server: {
     port: 5173,

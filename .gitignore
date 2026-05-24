@@ -41,3 +41,7 @@ pnpm-debug.log*
 
 # === Video Assets (local only, not deployed) ===
 video_assets/
+
+# === ONNX Model files (too large for git, downloaded separately) ===
+public/models/
+dist/models/

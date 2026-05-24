@@ -444,6 +444,54 @@ export default {
     }
 
     try {
+      // ── 模型文件代理（R2）──
+      // 通过 Worker 代理模型文件，避免暴露 R2 直链
+      // 仅允许从本站页面访问，防止恶意下载
+      if (path.startsWith("/models/")) {
+        const referer = request.headers.get("Referer") || "";
+        const origin = url.origin;
+        // 仅允许本站页面或无 Referer（浏览器直接访问）
+        if (referer && !referer.startsWith(origin)) {
+          return renderErrorPage(403, "禁止访问",
+            "模型文件仅允许从本站页面加载。请访问 ocr_demo.html 使用在线识别功能。",
+            path, request);
+        }
+
+        // 频率限制：模型文件较大，单独限制
+        if (isRateLimited("model:" + clientIP)) {
+          return new Response("Too Many Requests — 模型下载频率过高，请稍后再试", {
+            status: 429,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "Retry-After": "120",
+              ...corsHeaders(),
+              ...securityHeaders(false),
+            },
+          });
+        }
+
+        // R2 模型存储 URL（从环境变量或使用默认值）
+        const R2_MODEL_BASE = env.R2_MODEL_BASE || "https://release.interknot.dpdns.org";
+        const modelUrl = R2_MODEL_BASE + path;
+        const modelResp = await fetch(modelUrl);
+
+        if (!modelResp.ok) {
+          return renderErrorPage(404, "模型文件未找到",
+            "模型文件尚未部署到 R2。请联系管理员。",
+            path, request);
+        }
+
+        const modelContent = await modelResp.arrayBuffer();
+        return new Response(modelContent, {
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "Cache-Control": "public, max-age=86400, s-maxage=604800",
+            ...corsHeaders(),
+            ...securityHeaders(false),
+          },
+        });
+      }
+
       // 路径解析
       let filePath;
       if (path === "/") {
