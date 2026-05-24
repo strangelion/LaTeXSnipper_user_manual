@@ -115,6 +115,7 @@ function securityHeaders(isHtml) {
       "img-src 'self' data: blob: https:",
       "font-src 'self'",
       "connect-src 'self' https:",
+      "worker-src 'self' blob:",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'none'",
