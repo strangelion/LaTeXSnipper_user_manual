@@ -529,8 +529,8 @@ main {
   max-width: 1024px;
   will-change: transform, opacity;
   position: relative;
-  /* 让卡片在视口中居中（以背景格子为参考 8:6 → 居中） */
-  padding-left: 15px;
+  /* 居中容器，移除不对称的 padding-left */
+  margin: 0 auto;
 }
 
 .carousel-track {
@@ -925,6 +925,48 @@ main {
     min-height: auto;
     padding: 3rem 0;
   }
+  .carousel-container {
+    padding: 0 0.5rem;
+  }
+  /* 窄屏用 max-width 约束卡片实际宽度，避免 scale() 布局盒子残留导致的偏移 */
+  .carousel-card {
+    transform: none;
+    max-width: clamp(280px, 86vw, 820px);
+    margin: 0 auto;
+    opacity: 0.82;
+  }
+  .carousel-card.active {
+    transform: none;
+    max-width: 100%;
+    opacity: 1;
+  }
+  .carousel-front {
+    padding: 2rem 1.25rem;
+  }
+  .carousel-front h3 {
+    font-size: 1.15rem;
+  }
+  .carousel-front p {
+    font-size: 0.88rem;
+  }
+  .carousel-detail {
+    padding: 1rem 1rem;
+  }
+  .carousel-detail-inner p {
+    font-size: 0.85rem;
+  }
+  .carousel-arrow {
+    width: 36px;
+    height: 36px;
+  }
+  .carousel-dots {
+    gap: 6px;
+    bottom: -1rem;
+  }
+  .carousel-dot {
+    width: 32px;
+    height: 32px;
+  }
   .slide-scroll {
     position: relative;
     top: auto;
@@ -978,6 +1020,53 @@ main {
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
+  }
+  .carousel-container {
+    padding: 0 0.25rem;
+  }
+  /* 超窄屏 — max-width 约束实际宽度，消除 scale 布局偏移 */
+  .carousel-slide {
+    padding: 0 clamp(0.15rem, 1.5vw, 0.35rem);
+  }
+  .carousel-card {
+    transform: none;
+    max-width: clamp(240px, 74vw, 820px);
+    margin: 0 auto;
+    opacity: 0.78;
+  }
+  .carousel-card.active {
+    transform: none;
+    max-width: 100%;
+    opacity: 1;
+  }
+  .carousel-front {
+    padding: clamp(1rem, 4vw, 1.5rem) clamp(0.75rem, 3vw, 1rem);
+  }
+  .carousel-front h3 {
+    font-size: clamp(0.9rem, 3.5vw, 1rem);
+  }
+  .carousel-front p {
+    font-size: clamp(0.72rem, 2.8vw, 0.8rem);
+  }
+  .carousel-detail-inner p {
+    font-size: 0.78rem;
+  }
+  .carousel-flip-btn {
+    font-size: 0.8rem;
+  }
+  .carousel-arrow {
+    width: clamp(26px, 8vw, 30px);
+    height: clamp(26px, 8vw, 30px);
+  }
+  .carousel-dot {
+    width: clamp(24px, 7vw, 28px);
+    height: clamp(24px, 7vw, 28px);
+  }
+  .carousel-dots {
+    gap: clamp(3px, 1.2vw, 6px);
+  }
+  .carousel-counter {
+    font-size: 0.75rem;
   }
 }
 /* --- Scroll Progress Bar --- */

@@ -25,6 +25,7 @@ function copy(src, dst) {
 const assets = [
   'download.html',
   { src: 'public/error.html', dst: 'error.html' },
+  { src: 'public/robots.txt', dst: 'robots.txt' },
   'user_manual.html',
   'user_manual.typ',
   'styles/styles.css',

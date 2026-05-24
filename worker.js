@@ -132,6 +132,62 @@ function corsHeaders() {
   };
 }
 
+// ── 反爬虫 / 恶意机器人检测 ──
+const BAD_BOT_PATTERNS = [
+  // 漏洞扫描器
+  /nuclei/i, /nikto/i, /nessus/i, /burp/i, /sqlmap/i, /hydra/i,
+  /metasploit/i, /masscan/i, /zgrab/i, /gobuster/i, /dirbuster/i,
+  /wpscan/i, /joomla/i, /drupal/i, /wordpress/i,
+  // AI 数据抓取（激进型）
+  /Bytespider/i, /Bytedance/i, /PetalBot/i,
+  /SemrushBot/i, /AhrefsBot/i, /DotBot/i,
+  /MegaIndex/i, /SeznamBot/i, /YandexBot/i,
+  /DataForSeoBot/i, /serpstatbot/i,
+  // 垃圾流量
+  /MJ12bot/i, /BrandVerity/i, /BLEXBot/i,
+  /Gigabot/i, /ltx71/i, /Nimbostratus/i,
+  /ZoominfoBot/i, /Webharvy/i, /TinEye-bot/i,
+  /Scrapy/i, /python-requests/i, /python-urllib/i,
+  /wget/i, /curl/i, /libwww/i, /Go-http-client/i,
+];
+
+function isBadBot(userAgent) {
+  if (!userAgent) return true; // 空 UA 视为可疑
+  if (userAgent.length < 30) return true; // 过短的 UA 可疑
+  for (const pattern of BAD_BOT_PATTERNS) {
+    if (pattern.test(userAgent)) return true;
+  }
+  return false;
+}
+
+// 简易频率限制（每个 IP 每秒最多 N 个请求）
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 5000;  // 5 秒窗口
+const RATE_LIMIT_MAX = 120;       // 窗口内最多请求数
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  let entry = rateLimitMap.get(ip);
+  if (!entry || now - entry.reset > RATE_LIMIT_WINDOW) {
+    entry = { count: 1, reset: now };
+    rateLimitMap.set(ip, entry);
+    return false;
+  }
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) return true;
+  return false;
+}
+
+// 定期清理频率限制表，防止内存泄漏
+function cleanupRateLimit() {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitMap) {
+    if (now - entry.reset > RATE_LIMIT_WINDOW * 2) {
+      rateLimitMap.delete(ip);
+    }
+  }
+}
+
 // ── 压缩支持 ──
 // 对文本类响应启用 gzip/brotli 压缩，大幅减小传输体积
 const COMPRESSIBLE_TYPES = new Set([
@@ -331,6 +387,38 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
+
+    // ── 反爬虫检测 ──
+    const userAgent = request.headers.get("User-Agent") || "";
+    const clientIP = request.headers.get("CF-Connecting-IP") || request.headers.get("X-Forwarded-For") || "unknown";
+
+    // 恶意机器人直接拦截
+    if (isBadBot(userAgent)) {
+      return new Response("Forbidden", {
+        status: 403,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          ...corsHeaders(),
+          ...securityHeaders(false),
+        },
+      });
+    }
+
+    // 频率限制
+    if (isRateLimited(clientIP)) {
+      return new Response("Too Many Requests", {
+        status: 429,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Retry-After": "30",
+          ...corsHeaders(),
+          ...securityHeaders(false),
+        },
+      });
+    }
+
+    // 定期清理频率表（每 500 次请求执行一次）
+    if (Math.random() < 0.002) cleanupRateLimit();
 
     // 只允许 GET 和 OPTIONS
     if (request.method !== "GET" && request.method !== "OPTIONS" && request.method !== "HEAD") {
