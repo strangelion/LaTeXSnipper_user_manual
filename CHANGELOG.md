@@ -1,23 +1,43 @@
 # 更新日志
 
-## [1.4.0] — 2026-05-24
+## [1.5.0] — 2026-05-25
 
 ### ✨ 新增
 
-- **在线公式识别 Demo**：`ocr_demo.html` 独立页面，浏览器端 ONNX Runtime 推理，支持拖拽 / 点击 / `Ctrl+V` 粘贴截图，设备指纹 + 20 次/天限制 + 5 秒冷却防滥用
-- **R2 模型存储**：识别模型（编码器 84MB + 解码器 29MB）托管于 Cloudflare R2，Worker 代理加 Referrer 校验，不暴露直链
+- **PDF 上传识别**：OCR Demo 支持 PDF 上传（最多 100 页），PDF.js 渲染 + 逐页 OCR
+- **相机拍照识别**：`getUserMedia` 调用后置摄像头，拍照直接送 OCR
+- **手写识别模式**：Canvas 手写板，笔/橡皮/撤销/清空，方格底纹跟随主题
+- **MathJax SVG 预览**：识别结果以 SVG 数学公式渲染，替代纯文本 LaTeX
+- **R2 配额管理系统**：追踪 B 类操作次数，95% 限制模型下载，98% 下载链接切 GitHub
+- **页面访问统计**：Worker 端按月份/路径记录 PV，`/ping` 端点可查
+- **COOP/COEP 响应头**：启用 SharedArrayBuffer，ONNX 多线程 + SIMD 加速
+- **下载链接加密**：`/dl/` 代理路径替代 R2 直链，R2 域名通过 Secret 注入
 
 ### 🎨 优化
 
-- **下载页卡片**：hover 改为史莱姆果冻弹性动效（jellyBounce + jellyWobble）
-- **首页 Hero**：新增"想要看下效果？"按钮指向在线识别
-- **首页底部**：替换为 QQ 群入口（Simple Icons Tencent QQ 图标）
-- **ocr_demo 预览图居中**，底部提示"网页版为轻量演示，识别效果可能与桌面客户端存在差异"
-- **Cache API** 缓存模型文件，二次访问秒开无需重新下载
+- **LaTeX 自动修复**：OCR 结果自动修复括号、分式、环境、left-right 配对
+- **解码上限 256→512 tokens**：匹配模型 generation_config
+- **ONNX WebGPU 优先**：Chrome/Edge 使用 GPU 推理，WASM 兜底
+- **PDF 自适应渲染**：目标 768px 分辨率，Canvas 直传 OCR 跳过编码往返
+- **手写板内容裁剪**：识别前自动裁剪空白边距，提高识别准确率
+- **手写板主题跟随**：JS 直接设 style 绕过 CSS 重绘延迟
+- **代码整理**：CSS/HTML/JS 全文件分区，14 个区块各带目录标题
 
-### 🔧 其他
+### 🔧 修复
 
-- Worker 路径解析统一从 `dist/` 提供，新增页面无需改 Worker
+- CSP `script-src` / `connect-src` 添加 `blob:` 允许 ONNX 动态模块加载
+- PDF blob URL 改用 `arrayBuffer()` 绕过 CSP
+- KV 配额数据每次操作/每 1 小时有变化即刷入，防止部署丢失
+- Actions SHA256 替换用 `\g<1>` 避免十六进制冲突
+- Actions 工作流同时更新 `download.html` 和 `dist/download.html`
+- Actions 减少到每天一次 + API 校验防止空状态文件
+- 拍照按钮 `stopPropagation` 防止冒泡触发文件选择器
+- 主题切换粒子背景重建、手写板方格即时切换
+- 移除每日 20 次客户端限制（模型缓存后识别零 R2 开销）
+
+### ⚠️ 安全
+
+- `R2_MODEL_BASE` 移至 Cloudflare Dashboard Secret
 - CSP 放行 `blob:` / `wasm-unsafe-eval` / `cdn.jsdelivr.net`
 - `.gitignore` 移除 `dist/` 排除规则，全量跟踪构建产物
 

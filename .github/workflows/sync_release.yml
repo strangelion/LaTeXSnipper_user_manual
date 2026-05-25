@@ -2,7 +2,7 @@ name: 同步 Release 到 R2
 
 on:
   schedule:
-    - cron: '0 */12 * * *'
+    - cron: '7 3 * * *'  # 每天一次 (UTC 3:07)
   workflow_dispatch:
 
 permissions:
@@ -24,26 +24,35 @@ jobs:
             SHOULD="true"
             echo "manual trigger, force sync"
           else
-            RELEASE=$(curl -sL -H "Accept: application/vnd.github+json" \
+            RELEASE=$(curl -sL --retry 2 -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/SakuraMathcraft/LaTeXSnipper/releases/tags/v2.3.2_Final_Stable")
             PUBLISHED=$(echo "$RELEASE" | jq -r '.published_at')
-            echo "Release published: $PUBLISHED"
-            if [ -f .release_state.json ]; then
-              LAST=$(jq -r '.last_sync' .release_state.json)
-              echo "Last sync: $LAST"
-              if [ "$PUBLISHED" != "$LAST" ]; then
-                SHOULD="true"
-                echo "Update detected"
-              else
-                echo "No change, skip"
-              fi
+            # 校验 API 响应有效（published_at 必须是合法时间戳）
+            if [ "$PUBLISHED" = "null" ] || [ -z "$PUBLISHED" ]; then
+              echo "API response invalid, skip sync"
+              PUBLISHED=""
             else
-              SHOULD="true"
-              echo "First run, sync"
+              echo "Release published: $PUBLISHED"
+              if [ -f .release_state.json ]; then
+                LAST=$(jq -r '.last_sync // empty' .release_state.json)
+                echo "Last sync: $LAST"
+                if [ "$PUBLISHED" != "$LAST" ]; then
+                  SHOULD="true"
+                  echo "Update detected"
+                else
+                  echo "No change, skip"
+                fi
+              else
+                SHOULD="true"
+                echo "First run, sync"
+              fi
             fi
           fi
           echo "should_sync=$SHOULD" >> $GITHUB_OUTPUT
-          echo "$RELEASE" | jq -r '{last_sync: .published_at}' > .release_state.json
+          # 仅在确认同步后更新状态文件
+          if [ "$SHOULD" = "true" ] && [ -n "$PUBLISHED" ]; then
+            echo "$RELEASE" | jq -r '{last_sync: .published_at}' > .release_state.json
+          fi
 
       - name: 保存状态文件
         run: |
