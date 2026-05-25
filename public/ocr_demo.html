@@ -160,7 +160,7 @@ pre.result-code { background: #1e293b; color: #94a3b8; padding: 1rem 1.25rem; bo
 
 <div class="demo-page">
   <h1 class="demo-title">在线公式识别</h1>
-  <p class="demo-sub">基于 MathCraft OCR · 浏览器端 ONNX Runtime 推理 · 全程本地运算</p>
+  <p class="demo-sub">基于 MathCraft OCR · 浏览器端 ONNX Runtime 推理 · 全程本地运算 <span style="font-size:0.7rem;opacity:0.4;">rev 250526</span></p>
 
   <!-- ═══ 状态栏 ═══ -->
   <div class="status-bar" id="statusBar">
@@ -895,6 +895,11 @@ MathJax = {
   // ═══════════════════════════════════════════════
   async function init() {
     try {
+      if (typeof ort === 'undefined') {
+        showError('ONNX Runtime 加载失败。请检查网络连接，或尝试刷新页面（Ctrl+F5 强制刷新）。<br>如使用广告拦截器，请将本站加入白名单。');
+        setStatus('error', 'CDN 加载失败', false);
+        return;
+      }
       ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/';
       if (crossOriginIsolated) { ort.env.wasm.numThreads = Math.min(navigator.hardwareConcurrency || 4, 4); ort.env.wasm.simd = true; }
       else { ort.env.wasm.numThreads = 1; }
