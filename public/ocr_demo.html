@@ -115,11 +115,11 @@
   </div>
 
   <div class="drop-zone" id="dropZone">
-    <input type="file" id="fileInput" accept="image/*">
+    <input type="file" id="fileInput" accept="image/*,.pdf">
     <div id="dropContent">
       <div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
-      <div>拖入公式截图 · 点击上传 · <kbd style="background:var(--border-color);padding:2px 8px;border-radius:4px;">Ctrl+V</kbd> 粘贴</div>
-      <div style="font-size:0.8rem;opacity:0.6;margin-top:0.5rem;">Win+Shift+S 截图后在此页面按 Ctrl+V 即可识别<br>网页版提供基础识别效果，桌面客户端内置专属优化引擎</div>
+      <div>拖入公式截图 / PDF · 点击上传 · <kbd style="background:var(--border-color);padding:2px 8px;border-radius:4px;">Ctrl+V</kbd> 粘贴截图</div>
+      <div style="font-size:0.8rem;opacity:0.6;margin-top:0.5rem;">Win+Shift+S 截图后在此页面按 Ctrl+V 即可识别<br>也可上传 PDF（最多100页），逐页识别公式<br>网页版提供基础识别效果，桌面客户端内置专属优化引擎</div>
     </div>
     <img id="preview" style="display:none;" alt="预览">
   </div>
@@ -136,14 +136,20 @@
   <div class="error-msg" id="errorMsg" style="display:none;"></div>
 
   <div class="info-note">
-    <strong>说明：</strong>首次加载需下载 ONNX Runtime（约 6MB）和识别模型（编码器 84MB + 解码器 29MB），请耐心等待。模型缓存于浏览器，二次使用秒开。所有推理均在本地浏览器完成，图片不会上传。网页版提供基础识别效果，桌面客户端内置专属优化引擎，欢迎下载体验！
+    <strong>说明：</strong>首次加载需下载 ONNX Runtime（约 6MB）和识别模型（编码器 84MB + 解码器 29MB），请耐心等待。模型缓存于浏览器，二次使用秒开。所有推理均在本地浏览器完成，图片不会上传。支持图片和 PDF（最多100页）上传识别。网页版提供基础识别效果，桌面客户端内置专属优化引擎，欢迎下载体验！
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script>
 (async function() {
   const MODEL_BASE = '/models/mathcraft-formula-rec';
+
+  // PDF.js worker config
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  }
 
   // DOM refs
   const statusIcon = document.getElementById('statusIcon');
@@ -532,6 +538,134 @@
     }
   }
 
+  // ====== PDF 处理 ======
+  async function processPDF(file) {
+    const MAX_PAGES = 100;
+    const url = URL.createObjectURL(file);
+
+    try {
+      const pdf = await pdfjsLib.getDocument(url).promise;
+      const totalPages = pdf.numPages;
+
+      if (totalPages > MAX_PAGES) {
+        showError('PDF 页数 (' + totalPages + ') 超过 ' + MAX_PAGES + ' 页限制，请分割后重试');
+        return null;
+      }
+
+      // Render first page as preview
+      try {
+        const firstPage = await pdf.getPage(1);
+        const pv = firstPage.getViewport({ scale: 0.5 });
+        const pvCanvas = document.createElement('canvas');
+        pvCanvas.width = pv.width;
+        pvCanvas.height = pv.height;
+        await firstPage.render({ canvasContext: pvCanvas.getContext('2d'), viewport: pv }).promise;
+        preview.src = pvCanvas.toDataURL();
+        preview.style.display = 'block';
+        dropContent.style.display = 'none';
+      } catch(e) { /* preview failure is non-fatal */ }
+
+      // Process each page: extract text + OCR formulas
+      const allResults = [];
+      for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+        setStatus('processing', '正在处理第 ' + pageNum + ' / ' + totalPages + ' 页…', true);
+
+        const pct = Math.round((pageNum - 1) / totalPages * 100);
+        progressWrap.classList.add('show');
+        progressFile.textContent = 'PDF ' + totalPages + ' 页';
+        progressFill.style.width = pct + '%';
+        progressPercent.textContent = pct + '%';
+
+        const page = await pdf.getPage(pageNum);
+
+        // Extract native text content from PDF (preserves typesetting)
+        let pageText = '';
+        try {
+          const textContent = await page.getTextContent();
+          const items = textContent.items;
+          if (items.length) {
+            const lineMap = {};
+            for (const item of items) {
+              const y = Math.round(item.transform[5] * 10) / 10;
+              let key = null;
+              for (const k of Object.keys(lineMap)) {
+                if (Math.abs(parseFloat(k) - y) < 4) { key = k; break; }
+              }
+              if (!key) key = String(y);
+              if (!lineMap[key]) lineMap[key] = [];
+              lineMap[key].push(item);
+            }
+            const sortedYs = Object.keys(lineMap).sort(function(a, b) { return parseFloat(b) - parseFloat(a); });
+            const lines = [];
+            for (const y of sortedYs) {
+              lineMap[y].sort(function(a, b) { return a.transform[4] - b.transform[4]; });
+              const lineText = lineMap[y].map(function(it) { return it.str; }).join(' ');
+              if (lineText.trim()) lines.push(lineText.trim());
+            }
+            pageText = lines.join('\n');
+          }
+        } catch(e) { /* text extraction failure is non-fatal */ }
+
+        // Render page to image for formula OCR
+        const viewport = page.getViewport({ scale: 2.0 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+
+        const blob = await new Promise(function(resolve) { canvas.toBlob(resolve, 'image/png'); });
+        const img = new Image();
+        img.src = URL.createObjectURL(blob);
+        await new Promise(function(r) { img.onload = r; });
+
+        let formulaLatex = '';
+        let formulaConf = 0;
+        try {
+          const result = await recognize(img);
+          formulaLatex = result.latex;
+          formulaConf = result.confidence;
+        } catch(e) {
+          formulaLatex = '% [Error] ' + (e.message || e);
+        }
+        URL.revokeObjectURL(img.src);
+
+        allResults.push({
+          page: pageNum,
+          text: pageText,
+          latex: formulaLatex,
+          confidence: formulaConf
+        });
+      }
+
+      progressWrap.classList.remove('show');
+
+      if (allResults.length === 0) {
+        showError('PDF 识别失败：未能从任何页面提取内容');
+        return null;
+      }
+
+      // Combine text + formulas per page, preserving original PDF structure
+      const combined = allResults.map(function(r) {
+        var parts = ['% === Page ' + r.page + ' ==='];
+        if (r.text) {
+          parts.push('% --- Text ---');
+          parts.push(r.text);
+        }
+        if (r.latex && r.latex.trim()) {
+          parts.push('% --- Formulas ---');
+          parts.push(r.latex);
+        }
+        return parts.join('\n');
+      }).join('\n\n');
+
+      const avgConf = allResults.reduce(function(s, r) { return s + r.confidence; }, 0) / allResults.length;
+
+      return { latex: combined, confidence: avgConf, pageCount: totalPages };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
   // ====== 处理图片 ======
   async function processImage(file) {
     if (!ready) { showError('模型尚未加载完成，请稍等'); return; }
@@ -553,8 +687,26 @@
       }
     }
 
-    // 最小图片尺寸检查
-    if (file.size < 1024) { showError('图片太小，请上传至少 1KB 的公式图片'); return; }
+    if (file.size < 1024) { showError('文件太小，请上传至少 1KB 的文件'); return; }
+
+    // PDF handling
+    if (file.type === 'application/pdf') {
+      resultCard.classList.remove('show');
+      errorMsg.style.display = 'none';
+      setStatus('processing', '正在解析 PDF…', true);
+
+      const result = await processPDF(file);
+      if (!result) return;
+
+      lastRecognitionTime = Date.now();
+      if (!isUnlocked()) incrementUsage();
+      resultCode.textContent = result.latex;
+      confidence.textContent = '置信度 ' + (result.confidence * 100).toFixed(1) + '% | ' + result.pageCount + ' 页';
+      resultCard.classList.add('show');
+      copyBtn.style.display = 'block';
+      setStatus('done', '识别完成（' + result.pageCount + ' 页）', false);
+      return;
+    }
 
     // 预览
     const url = URL.createObjectURL(file);
@@ -593,7 +745,7 @@
     e.preventDefault();
     dropZone.classList.remove('drag-over');
     const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) processImage(file);
+    if (file && (file.type.startsWith('image/') || file.type === 'application/pdf')) processImage(file);
   });
 
   fileInput.addEventListener('change', (e) => {
