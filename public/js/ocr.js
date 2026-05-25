@@ -181,20 +181,23 @@
   function isImageEmpty(img) {
     var canvas = document.createElement('canvas');
     var size = Math.min(384, img.naturalWidth || img.width, img.naturalHeight || img.height);
+    if (size < 4) return true;
     canvas.width = size; canvas.height = size;
     var ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, size, size);
     var pixels = ctx.getImageData(0, 0, size, size).data;
-    var n = size * size, sum = 0;
-    for (var i = 0; i < n; i++) { sum += pixels[i * 4]; }
+    var n = size * size, sum = 0, minVal = 255, maxVal = 0;
+    for (var i = 0; i < n; i++) {
+      var v = pixels[i * 4]; sum += v;
+      if (v < minVal) minVal = v; if (v > maxVal) maxVal = v;
+    }
+    var range = maxVal - minVal;
+    if (range <= 20) return true; // 对比度极低
     var mean = sum / n;
-    var variance = 0;
-    for (var j = 0; j < n; j++) { var d = pixels[j * 4] - mean; variance += d * d; }
-    var std = Math.sqrt(variance / n);
-    if (std <= 2.5) return true;
+    var thr = Math.max(16, range * 0.3); // 动态阈值：自适应图像对比度
     var fg = 0;
-    for (var k = 0; k < n; k++) { if (Math.abs(pixels[k * 4] - mean) >= 32) fg++; }
-    return (fg / n) < 0.0015;
+    for (var k = 0; k < n; k++) { if (Math.abs(pixels[k * 4] - mean) >= thr) fg++; }
+    return (fg / n) < 0.0001;
   }
 
   function preprocessImage(img) {
