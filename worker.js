@@ -676,10 +676,10 @@ export default {
       }
 
       // ── 下载代理（R2）──
-      // /dl/xxx → R2 release/xxx，追踪带宽，98% 时重定向 GitHub
+      // /dl/xxx → R2/xxx，追踪带宽，98% 时重定向 GitHub
       if (path.startsWith("/dl/")) {
         const R2_BASE = env.R2_MODEL_BASE || "https://release.interknot.dpdns.org";
-        const dlUrl = R2_BASE + "/release/" + path.slice(4); // /dl/foo → /release/foo
+        const dlUrl = R2_BASE + "/" + path.slice(4); // /dl/foo → /foo
 
         // 配额阻断：重定向到 GitHub Releases
         const relQuota = await quotaGetStatus(env);
