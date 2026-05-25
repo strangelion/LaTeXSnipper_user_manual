@@ -35,8 +35,5 @@ vars = { GITHUB_BRANCH = "master", DEPLOY_ENV = "production", R2_MODEL_BASE = "h
 workers_dev = true
 vars = { DEPLOY_ENV = "preview" }
 
-{
-  "observability": {
-    "enabled": false
-  }
-}
+[observability]
+enabled = false
