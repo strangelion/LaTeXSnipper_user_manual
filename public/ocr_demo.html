@@ -478,6 +478,57 @@
     }
   }
 
+  // ====== LaTeX 修复 ======
+  function repairLatex(tex) {
+    var s = tex.replace(/\r\n/g, '\n').trim();
+    if (!s) return s;
+    // 1. 去除末尾孤立反斜杠
+    s = s.replace(/(?:\\\\\s*)+$/g, '').trim();
+    while (s.endsWith('\\') && !s.endsWith('\\\\')) s = s.slice(0, -1).trim();
+    // 2. 去除多余的 }
+    var depth = 0, cleaned = '';
+    for (var i = 0; i < s.length; i++) {
+      var ch = s[i];
+      if (ch === '{') { depth++; cleaned += ch; }
+      else if (ch === '}') { if (depth > 0) { depth--; cleaned += ch; } }
+      else { cleaned += ch; }
+    }
+    s = cleaned;
+    // 3. 补全不完整的 \frac \binom \dfrac \tfrac
+    var cmdRe = /\\(?:dfrac|tfrac|frac|binom)\b/g, m, edits = [];
+    while ((m = cmdRe.exec(s)) !== null) {
+      var pos = m.index + m[0].length;
+      while (pos < s.length && s[pos] === ' ') pos++;
+      if (pos >= s.length || s[pos] !== '{') { edits.push({p: pos, t: ' {} {}'}); continue; }
+      var d = 0, end = -1;
+      for (var j = pos; j < s.length; j++) {
+        if (s[j] === '{') d++; else if (s[j] === '}') { d--; if (d === 0) { end = j + 1; break; } }
+      }
+      if (end < 0) { edits.push({p: pos, t: ' {}'}); continue; }
+      pos = end; while (pos < s.length && s[pos] === ' ') pos++;
+      if (pos >= s.length || s[pos] !== '{') { edits.push({p: end, t: ' {}'}); }
+    }
+    for (var ei = edits.length - 1; ei >= 0; ei--) { s = s.slice(0, edits[ei].p) + edits[ei].t + s.slice(edits[ei].p); }
+    // 4. 补全未闭合的 \left 和 \begin 环境
+    var leftStack = [], beginStack = [];
+    var re2 = /\\(left|right)\b|\\(begin|end)\s*\{([A-Za-z*]+)\s*\}/g, m2;
+    while ((m2 = re2.exec(s)) !== null) {
+      if (m2[1] === 'left') leftStack.push(m2.index);
+      else if (m2[1] === 'right' && leftStack.length) leftStack.pop();
+      else if (m2[2] === 'begin') beginStack.push(m2[3]);
+      else if (m2[2] === 'end' && beginStack.length) {
+        for (var bi = beginStack.length - 1; bi >= 0; bi--) { if (beginStack[bi] === m2[3]) { beginStack.length = bi; break; } }
+      }
+    }
+    var suffix = '';
+    while (leftStack.length) { suffix += ' \\right.'; leftStack.pop(); }
+    while (depth > 0) { suffix += '}'; depth--; }
+    for (var bi2 = beginStack.length - 1; bi2 >= 0; bi2--) { suffix += '\n\\end{' + beginStack[bi2] + '}'; }
+    // 5. 补全末尾 }
+    while (depth > 0) { s += '}'; depth--; }
+    return (s + suffix).trim();
+  }
+
   // ====== 图像预处理 ======
   function preprocessImage(img) {
     const canvas = document.createElement('canvas');
@@ -548,7 +599,7 @@
 
     const decName0 = decoderSession.inputNames[0];
     const decName1 = decoderSession.inputNames[1];
-    const maxTokens = 256;
+    const maxTokens = 512;
 
     let inputIds = new ort.Tensor('int64', BigInt64Array.from([BigInt(decoderStartId)]), [1, 1]);
     const tokenIds = [];
@@ -577,7 +628,7 @@
       );
     }
 
-    const latex = decodeTokens(tokenIds);
+    const latex = repairLatex(decodeTokens(tokenIds));
     const avgConf = tokenProbs.length > 0
       ? tokenProbs.reduce((a, b) => a + b, 0) / tokenProbs.length : 0;
 
