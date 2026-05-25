@@ -434,7 +434,7 @@
       );
       setStatus('loading', '正在加载编码器到内存…', true);
       encoderSession = await ort.InferenceSession.create(encoderBuf, {
-        executionProviders: ['wasm'],
+        executionProviders: ['webgl', 'wasm'],
         graphOptimizationLevel: 'all',
       });
 
@@ -444,7 +444,7 @@
       );
       setStatus('loading', '正在加载解码器到内存…', true);
       decoderSession = await ort.InferenceSession.create(decoderBuf, {
-        executionProviders: ['wasm'],
+        executionProviders: ['webgl', 'wasm'],
         graphOptimizationLevel: 'all',
       });
     } catch(e) {
@@ -587,9 +587,9 @@
   // ====== 初始化 ======
   async function init() {
     try {
-      // 配置 WASM 后端
       ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/';
-      // 优先使用 WebGL 后端，避免 WASM 兼容问题
+      // WebGL 后端优先（更快），WASM 兜底
+      ort.env.webgl.pack = true;
 
       setStatus('loading', '正在加载分词器…', true);
       await loadTokenizer();
@@ -910,16 +910,19 @@
   }
   function updateHwTheme(theme) {
     var wrap = document.querySelector('.hw-canvas-wrap');
-    if (!wrap) return;
-    if (theme === 'dark') {
-      wrap.style.backgroundColor = '#1e293b';
-      wrap.style.backgroundImage = 'linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px)';
-      wrap.style.backgroundSize = '20px 20px';
-    } else {
-      wrap.style.backgroundColor = '#ffffff';
-      wrap.style.backgroundImage = 'linear-gradient(rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.06) 1px, transparent 1px)';
-      wrap.style.backgroundSize = '20px 20px';
+    if (wrap) {
+      if (theme === 'dark') {
+        wrap.style.backgroundColor = '#1e293b';
+        wrap.style.backgroundImage = 'linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px)';
+        wrap.style.backgroundSize = '20px 20px';
+      } else {
+        wrap.style.backgroundColor = '#ffffff';
+        wrap.style.backgroundImage = 'linear-gradient(rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.06) 1px, transparent 1px)';
+        wrap.style.backgroundSize = '20px 20px';
+      }
     }
+    // 强制页面背景立即切换
+    document.documentElement.style.backgroundColor = theme === 'dark' ? '#0f111a' : '#f8fafc';
   }
   (function () {
     var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
