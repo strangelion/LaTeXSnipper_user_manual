@@ -200,10 +200,13 @@ function cleanupRateLimit() {
 const QUOTA_OPS_DEFAULT = 10000000;      // 默认月度限额（R2 免费 B 类操作）
 const QUOTA_WARN_PCT = 95;               // 95%：限制 OCR Demo 模型下载
 const QUOTA_BLOCK_PCT = 98;              // 98%：下载页链接重定向至 GitHub
+const QUOTA_KV_FLUSH_STEP = 1000;        // 每 1000 次操作刷入 KV
+const QUOTA_KV_FLUSH_INTERVAL = 3600000; // 或超过 1 小时未刷则兜底（防止 Worker 暂停丢数据）
 
 let quotaOps = 0;                        // 当月操作次数（内存）
 let quotaMonth = '';                     // 当前月份 "YYYY-MM"
 let quotaFlushMark = 0;                  // 上次刷入 KV 时的操作数
+let quotaLastFlushTime = 0;              // 上次刷入 KV 的时间戳
 let quotaKVLoaded = false;               // 是否已从 KV 加载过
 
 function quotaGetMonth() {
@@ -239,6 +242,7 @@ async function quotaEnsureLoaded(env) {
   if (!quotaKVLoaded) {
     quotaOps = await quotaLoadFromKV(env);
     quotaFlushMark = quotaOps;
+    quotaLastFlushTime = Date.now();
     quotaKVLoaded = true;
   }
 }
@@ -258,8 +262,13 @@ async function quotaGetStatus(env) {
 
 function quotaTrackOp(env, ctx) {
   quotaOps += 1;
-  // 每次操作都刷入 KV，防止部署重启丢数据
-  if (env && env.USAGE_KV) {
+  var now = Date.now();
+  var changed = quotaOps !== quotaFlushMark;
+  // 每 1000 次操作刷入；或超 1 小时且有变化则兜底
+  if (env && env.USAGE_KV && (changed && (quotaOps - quotaFlushMark >= QUOTA_KV_FLUSH_STEP ||
+      now - quotaLastFlushTime >= QUOTA_KV_FLUSH_INTERVAL))) {
+    quotaFlushMark = quotaOps;
+    quotaLastFlushTime = now;
     var p = quotaSaveToKV(env, quotaOps);
     if (ctx && p) ctx.waitUntil(p);
   }
