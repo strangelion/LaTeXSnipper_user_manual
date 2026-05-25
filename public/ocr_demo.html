@@ -801,7 +801,8 @@
   });
 
   // 相机拍照
-  async function openCamera() {
+  async function openCamera(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
     try {
       camStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
@@ -838,6 +839,17 @@
   camTrigger.addEventListener('click', openCamera);
   camCapture.addEventListener('click', capturePhoto);
   camClose.addEventListener('click', closeCamera);
+
+  // 点击遮罩关闭 + Esc 关闭 + 页面切走关闭
+  camModal.addEventListener('click', function(e) {
+    if (e.target === camModal) closeCamera();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && camModal.classList.contains('show')) closeCamera();
+  });
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden && camStream) closeCamera();
+  });
 
   window.copyResult = function() {
     navigator.clipboard.writeText('$$\n' + resultCode.textContent + '\n$$').then(() => {
