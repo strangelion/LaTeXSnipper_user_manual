@@ -24,6 +24,12 @@ try { MathfieldElement.strings = { 'zh-CN': {
 }}; } catch(_) {}
 window.MathfieldElement = MathfieldElement;
 </script>
+<!-- Pandoc WASM: CDN load, expose global for insertToWord -->
+<script type="module">
+import { Pandoc } from 'https://cdn.jsdelivr.net/npm/pandoc-wasm@0.0.2-dev.2/dist/pandoc.js';
+var p=new Pandoc();
+p.init().then(function(pandoc){window._pandoc=pandoc;console.log('[Pandoc] Ready')}).catch(function(e){console.warn('[Pandoc] Failed:',e)});
+</script>
 </head>
 <body>
 <div class="topbar">
@@ -85,6 +91,6 @@ window.MathfieldElement = MathfieldElement;
 <div id="toast" class="toast"></div>
 
 <!-- Debug log panel (Ctrl+Shift+D to toggle) -->
-<div id="debugPanel" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:200px;overflow-y:auto;background:var(--surface);border-top:1px solid var(--border);padding:8px 12px;font-family:monospace;font-size:10px;color:var(--muted);z-index:1000;white-space:pre-wrap;word-break:break-all"></div>
+<div id="debugPanel" style="position:fixed;bottom:0;left:0;right:0;max-height:160px;overflow-y:auto;background:var(--surface);border-top:1px solid var(--border);padding:6px 12px;font-family:monospace;font-size:10px;color:var(--muted);z-index:1000;white-space:pre-wrap;word-break:break-all">Waiting for boot...</div>
 </body>
 </html>

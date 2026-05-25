@@ -46,3 +46,9 @@ video_assets/
 public/models/
 dist/models/
 .sync_tmp/
+
+# === Word Add-in ===
+word-addin/node_modules/
+word-addin/dist/
+word-addin/assets/pandoc*
+dist/word-addin/
