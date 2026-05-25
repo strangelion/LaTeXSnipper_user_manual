@@ -896,7 +896,7 @@ MathJax = {
   async function init() {
     try {
       if (typeof ort === 'undefined') {
-        showError('ONNX Runtime 加载失败。请检查网络连接，或尝试刷新页面（Ctrl+F5 强制刷新）。<br>如使用广告拦截器，请将本站加入白名单。');
+        showError('ONNX Runtime 加载失败。请检查网络连接，刷新页面重试（Ctrl+F5）。如使用广告拦截器，请将本站加入白名单。');
         setStatus('error', 'CDN 加载失败', false);
         return;
       }
@@ -909,7 +909,9 @@ MathJax = {
       setStatus('ready', '模型就绪！拖入公式图片或 Ctrl+V 粘贴截图', false);
     } catch(e) { if (!errorMsg.style.display || errorMsg.style.display === 'none') showError('初始化失败: ' + (e.message || e)); }
   }
+
   init();
+
 })();
 </script>
 </body>
