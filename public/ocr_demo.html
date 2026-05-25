@@ -20,8 +20,7 @@
    6. 模式切换标签
    7. 手写板 (canvas, toolbar)
    8. MathJax 预览
-   9. 粒子背景
-   10. 手机端适配 (@media)
+   9. 手机端适配 (@media)
    ============================================================ */
 
 /* ── 1. 基础布局 ── */
@@ -124,12 +123,7 @@ pre.result-code { background: #1e293b; color: #94a3b8; padding: 1rem 1.25rem; bo
 .math-preview.show { display: block; }
 :root[data-theme="dark"] .math-preview { background: #1a1d28; }
 
-/* ── 9. 粒子背景 ── */
-#mathBg { position: fixed; inset: 0; z-index: -2; pointer-events: none; }
-.bg-overlay { position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(ellipse at 50% 60%, rgba(255,255,255,0.04) 0%, transparent 60%); }
-:root[data-theme="dark"] .bg-overlay { background: radial-gradient(ellipse at 50% 60%, rgba(0,0,0,0.3) 0%, transparent 60%); }
-
-/* ── 10. 手机端适配 ── */
+/* ── 9. 手机端适配 ── */
 @media (max-width: 640px) {
   .demo-page { padding: 1rem 0.5rem 3rem; }
   .demo-title { font-size: 1.4rem; }
@@ -150,8 +144,6 @@ pre.result-code { background: #1e293b; color: #94a3b8; padding: 1rem 1.25rem; bo
 </style>
 </head>
 <body>
-<canvas id="mathBg" aria-hidden="true"></canvas>
-
 <!-- ═══ 顶栏导航 ═══ -->
 <nav class="top-nav">
   <div class="inner">
@@ -438,7 +430,7 @@ MathJax = {
   // 5. 图像预处理 & 识别
   // ═══════════════════════════════════════════════
   const IMG_SIZE = 384;
-  const CONFIDENCE_MIN = 0.15;       // 低于此阈值判定为无效
+  const CONFIDENCE_MIN = 0.15;
 
   // 快速检测图片是否有效（参考桌面版 _looks_like_empty_ocr_input）
   function isImageEmpty(img) {
@@ -454,52 +446,18 @@ MathJax = {
     var variance = 0;
     for (var j = 0; j < n; j++) { var d = pixels[j * 4] - mean; variance += d * d; }
     var std = Math.sqrt(variance / n);
-    if (std <= 2.5) return true; // 几乎纯色
+    if (std <= 2.5) return true;
     var fg = 0;
     for (var k = 0; k < n; k++) { if (Math.abs(pixels[k * 4] - mean) >= 32) fg++; }
-    return (fg / n) < 0.0015; // 前景像素太少
-  }
-
-  // 检测解码器陷入循环（参考桌面版 _looks_like_degenerate_formula_text）
-  function isDegenerateLatex(text) {
-    if (text.length < 80) return false;
-    var atomRe = /(\\[A-Za-z]+(?:\s*_\s*\{[^{}]{1,24}\})?|[A-Za-z0-9]+(?:\s*_\s*\{[^{}]{1,24}\})?)/g;
-    var atoms = [], m;
-    while ((m = atomRe.exec(text)) !== null) { atoms.push(m[1].replace(/\s+/g, '')); }
-    if (atoms.length < 24) return false;
-    var counts = {}, maxC = 0;
-    for (var i = 0; i < atoms.length; i++) { var c = (counts[atoms[i]] || 0) + 1; counts[atoms[i]] = c; if (c > maxC) maxC = c; }
-    return maxC >= 16 && maxC / atoms.length >= 0.45;
+    return (fg / n) < 0.0015;
   }
 
   function preprocessImage(img) {
     var canvas = document.createElement('canvas');
     canvas.width = IMG_SIZE; canvas.height = IMG_SIZE;
     var ctx = canvas.getContext('2d');
-
-    // 等比缩放 + 居中 + 灰边填充（保持宽高比，避免拉伸变形）
-    var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-    if (!iw || !ih) { iw = IMG_SIZE; ih = IMG_SIZE; }
-    var scale = Math.min(IMG_SIZE / iw, IMG_SIZE / ih);
-    var dw = Math.round(iw * scale), dh = Math.round(ih * scale);
-    var dx = (IMG_SIZE - dw) >> 1, dy = (IMG_SIZE - dh) >> 1;
-
-    // 灰色背景（归一化后 ≈ 0，与训练时的 padding 一致）
-    ctx.fillStyle = '#808080';
-    ctx.fillRect(0, 0, IMG_SIZE, IMG_SIZE);
-    ctx.drawImage(img, dx, dy, dw, dh);
-
-    var pixels = ctx.getImageData(0, 0, IMG_SIZE, IMG_SIZE).data;
-    var floatData = new Float32Array(3 * IMG_SIZE * IMG_SIZE);
-    var hw = IMG_SIZE * IMG_SIZE, scl = 2.0 / 255.0;
-    for (var i = 0; i < hw; i++) {
-      var p = i * 4;
-      floatData[i] = pixels[p] * scl - 1.0;
-      floatData[hw + i] = pixels[p + 1] * scl - 1.0;
-      floatData[2 * hw + i] = pixels[p + 2] * scl - 1.0;
-    }
-    return floatData;
-  }
+    // 直接缩放到 384×384（模型训练时的处理方式）
+    ctx.drawImage(img, 0, 0, IMG_SIZE, IMG_SIZE);
 
   function softmax(arr) {
     var max = Math.max.apply(null, arr);
@@ -563,10 +521,8 @@ MathJax = {
     }
 
     var latex = repairLatex(decodeTokens(tokenIds));
-    // 解码器陷入循环重复 → 丢弃
-    if (isDegenerateLatex(latex)) latex = '';
     var avgConf = tokenProbs.length > 0 ? tokenProbs.reduce(function(a, b) { return a + b; }, 0) / tokenProbs.length : 0;
-    if (avgConf < CONFIDENCE_MIN) latex = ''; // 置信度过低 → 丢弃
+    if (avgConf < CONFIDENCE_MIN) latex = '';
     return { latex: latex, confidence: avgConf };
   }
 
@@ -931,14 +887,9 @@ MathJax = {
       wrap.style.backgroundSize = '20px 20px';
     }
     document.documentElement.style.backgroundColor = theme === 'dark' ? '#0f111a' : '#f8fafc';
-    window.dispatchEvent(new Event('resize'));
+  }
   }
   (function() { var isDark = document.documentElement.getAttribute('data-theme') === 'dark'; updateThemeBtn(isDark ? 'dark' : 'light'); updateHwTheme(isDark ? 'dark' : 'light'); })();
-
-  // ═══════════════════════════════════════════════
-  // 14. 粒子背景动画
-  // ═══════════════════════════════════════════════
-  !function(){var c=document.getElementById('mathBg'),ctx=c.getContext('2d');var SYMBOLS=['∑','∫','∂','∇','√','π','∞','≈','≠','≤','≥','Δ','Σ','λ','θ','α','β','γ','δ','ε','μ','σ','τ','ω','φ','ψ','×','÷'];var FORMULAS=['e^{iπ}+1=0','∫e^{-x²}dx','Σ1/n²','a²+b²=c²','sin²θ+cos²θ=1','F=ma','E=mc²'];var mouse={x:-100,y:-100},trail=[],formulas=[],frame=0,lastMove=Date.now(),checkerCache=null;function resize(){c.width=window.innerWidth;c.height=window.innerHeight;c.style.width=window.innerWidth+'px';c.style.height=window.innerHeight+'px';checkerCache=null;initFormulas()}function buildChecker(){if(checkerCache)return;checkerCache=document.createElement('canvas');checkerCache.width=c.width;checkerCache.height=c.height;var ctx2=checkerCache.getContext('2d');var d=document.documentElement.getAttribute('data-theme')==='dark';ctx2.fillStyle=d?'#0f111a':'#f8fafc';ctx2.fillRect(0,0,c.width,c.height)}function initFormulas(){formulas=[];var density=110000;var count=Math.max(8,Math.min(20,Math.floor((c.width*c.height)/density)));for(var i=0;i<count;i++){formulas.push({x:Math.random()*c.width,y:Math.random()*c.height,content:FORMULAS[Math.floor(Math.random()*FORMULAS.length)],size:Math.random()*12+14,opacity:0,targetO:Math.random()*.2+.15,fadeSpeed:Math.random()*.006+.002,life:Math.random()*500+250,vx:(Math.random()-.5)*.15,vy:(Math.random()-.5)*.15,phase:'in'})}}function spawn(cx,cy,px,py){var dx=cx-px,dy=cy-py;var sx=(Math.sqrt(dx*dx+dy*dy)>2?dx*.15:0)+(Math.random()-.5)*1.2;var sy=(Math.sqrt(dx*dx+dy*dy)>2?dy*.15:0)+Math.random()*.5+.3;trail.push({x:cx+(Math.random()-.5)*6,y:cy+(Math.random()-.5)*6,s:SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)],life:1,size:Math.random()*7+12,vx:sx,vy:sy});if(trail.length>20)trail.splice(0,trail.length-20)}function animate(){frame++;if(document.hidden){requestAnimationFrame(animate);return}buildChecker();ctx.drawImage(checkerCache,0,0);var fc='rgba(180,200,240,0.7)';if(frame%2===0){for(var i=0;i<formulas.length;i++){var f=formulas[i];f.x+=f.vx;f.y+=f.vy;f.life--;if(f.phase==='in'){f.opacity+=f.fadeSpeed;if(f.opacity>=f.targetO)f.phase='hold'}else if(f.phase==='hold'){if(f.life<60)f.phase='out'}else if(f.phase==='out'){f.opacity-=f.fadeSpeed}if(f.life<=0||f.opacity<=0||f.x<-100||f.x>c.width+100||f.y<-50||f.y>c.height+50){formulas[i]={x:Math.random()*c.width,y:Math.random()*c.height,content:FORMULAS[Math.floor(Math.random()*FORMULAS.length)],size:Math.random()*12+14,opacity:0,targetO:Math.random()*.2+.15,fadeSpeed:Math.random()*.006+.002,life:Math.random()*500+250,vx:(Math.random()-.5)*.15,vy:(Math.random()-.5)*.15,phase:'in'};continue}if(f.opacity<.02)continue;ctx.save();ctx.globalAlpha=f.opacity;ctx.fillStyle=fc;ctx.font=f.size+'px "Times New Roman",serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(f.content,f.x,f.y);ctx.restore()}}if(frame%25===0&&Date.now()-lastMove>800&&mouse.x>0){trail.push({x:mouse.x+(Math.random()-.5)*25,y:mouse.y+(Math.random()-.5)*15,s:SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)],life:1,size:Math.random()*5+10,vx:(Math.random()-.5)*.25,vy:Math.random()*.5+.3});if(trail.length>20)trail.splice(0,trail.length-20)}for(var i=trail.length-1;i>=0;i--){var p=trail[i];p.life-=.006;p.x+=p.vx;p.y+=p.vy;p.vy+=.05;p.vx*=.993;if(p.life<=0){trail.splice(i,1);continue}ctx.save();ctx.globalAlpha=p.life*.75;ctx.fillStyle='rgba(96,165,250,0.85)';ctx.font=p.size+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(p.s,Math.floor(p.x),Math.floor(p.y));ctx.restore()}requestAnimationFrame(animate)}function onMove(e){var px=mouse.x,py=mouse.y;mouse.x=e.clientX;mouse.y=e.clientY;spawn(e.clientX,e.clientY,px,py);lastMove=Date.now()}resize();initFormulas();window.addEventListener('resize',function(){clearTimeout(window._rt);window._rt=setTimeout(resize,150)});window.addEventListener('mousemove',onMove);window.addEventListener('touchmove',function(e){if(!e.touches.length)return;var t=e.touches[0];var px=mouse.x,py=mouse.y;mouse.x=t.clientX;mouse.y=t.clientY;spawn(t.clientX,t.clientY,px,py);lastMove=Date.now()},{passive:true});animate()}();
 
   // ═══════════════════════════════════════════════
   // 启动
