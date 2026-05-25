@@ -16,6 +16,11 @@ workers_dev = true
 # 然后设置 R2 Bucket 为公开，或使用 R2 自定义域名
 # 将下面 vars 中的 R2_MODEL_BASE 替换为你的 R2 公开 URL
 
+# ── KV 命名空间绑定 ──
+kv_namespaces = [
+  { binding = "USAGE_KV", id = "1afdc87d24624a80aa99722ebf7e1ec6" }
+]
+
 # ── 分支部署 ──
 # 非 master 分支自动部署为预览版本
 # 部署到 workers.dev，URL 格式：<分支名>.latexsnipper.<子域名>.workers.dev
@@ -35,5 +40,6 @@ vars = { GITHUB_BRANCH = "master", DEPLOY_ENV = "production", R2_MODEL_BASE = "h
 workers_dev = true
 vars = { DEPLOY_ENV = "preview" }
 
-[observability]
+[observability.logs]
 enabled = false
+invocation_logs = true
