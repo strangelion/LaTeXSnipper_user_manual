@@ -437,19 +437,66 @@ MathJax = {
   // ═══════════════════════════════════════════════
   // 5. 图像预处理 & 识别
   // ═══════════════════════════════════════════════
+  const IMG_SIZE = 384;
+  const CONFIDENCE_MIN = 0.15;       // 低于此阈值判定为无效
+
+  // 快速检测图片是否有效（参考桌面版 _looks_like_empty_ocr_input）
+  function isImageEmpty(img) {
+    var canvas = document.createElement('canvas');
+    var size = Math.min(384, img.naturalWidth || img.width, img.naturalHeight || img.height);
+    canvas.width = size; canvas.height = size;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, size, size);
+    var pixels = ctx.getImageData(0, 0, size, size).data;
+    var n = size * size, sum = 0;
+    for (var i = 0; i < n; i++) { sum += pixels[i * 4]; }
+    var mean = sum / n;
+    var variance = 0;
+    for (var j = 0; j < n; j++) { var d = pixels[j * 4] - mean; variance += d * d; }
+    var std = Math.sqrt(variance / n);
+    if (std <= 2.5) return true; // 几乎纯色
+    var fg = 0;
+    for (var k = 0; k < n; k++) { if (Math.abs(pixels[k * 4] - mean) >= 32) fg++; }
+    return (fg / n) < 0.0015; // 前景像素太少
+  }
+
+  // 检测解码器陷入循环（参考桌面版 _looks_like_degenerate_formula_text）
+  function isDegenerateLatex(text) {
+    if (text.length < 80) return false;
+    var atomRe = /(\\[A-Za-z]+(?:\s*_\s*\{[^{}]{1,24}\})?|[A-Za-z0-9]+(?:\s*_\s*\{[^{}]{1,24}\})?)/g;
+    var atoms = [], m;
+    while ((m = atomRe.exec(text)) !== null) { atoms.push(m[1].replace(/\s+/g, '')); }
+    if (atoms.length < 24) return false;
+    var counts = {}, maxC = 0;
+    for (var i = 0; i < atoms.length; i++) { var c = (counts[atoms[i]] || 0) + 1; counts[atoms[i]] = c; if (c > maxC) maxC = c; }
+    return maxC >= 16 && maxC / atoms.length >= 0.45;
+  }
+
   function preprocessImage(img) {
     var canvas = document.createElement('canvas');
-    canvas.width = 384; canvas.height = 384;
+    canvas.width = IMG_SIZE; canvas.height = IMG_SIZE;
     var ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, 384, 384);
-    var pixels = ctx.getImageData(0, 0, 384, 384).data;
-    var floatData = new Float32Array(3 * 384 * 384);
-    var hw = 384 * 384, scale = 2.0 / 255.0;
+
+    // 等比缩放 + 居中 + 灰边填充（保持宽高比，避免拉伸变形）
+    var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    if (!iw || !ih) { iw = IMG_SIZE; ih = IMG_SIZE; }
+    var scale = Math.min(IMG_SIZE / iw, IMG_SIZE / ih);
+    var dw = Math.round(iw * scale), dh = Math.round(ih * scale);
+    var dx = (IMG_SIZE - dw) >> 1, dy = (IMG_SIZE - dh) >> 1;
+
+    // 灰色背景（归一化后 ≈ 0，与训练时的 padding 一致）
+    ctx.fillStyle = '#808080';
+    ctx.fillRect(0, 0, IMG_SIZE, IMG_SIZE);
+    ctx.drawImage(img, dx, dy, dw, dh);
+
+    var pixels = ctx.getImageData(0, 0, IMG_SIZE, IMG_SIZE).data;
+    var floatData = new Float32Array(3 * IMG_SIZE * IMG_SIZE);
+    var hw = IMG_SIZE * IMG_SIZE, scl = 2.0 / 255.0;
     for (var i = 0; i < hw; i++) {
-      var s = i * 4;
-      floatData[i] = pixels[s] * scale - 1.0;
-      floatData[hw + i] = pixels[s + 1] * scale - 1.0;
-      floatData[2 * hw + i] = pixels[s + 2] * scale - 1.0;
+      var p = i * 4;
+      floatData[i] = pixels[p] * scl - 1.0;
+      floatData[hw + i] = pixels[p + 1] * scl - 1.0;
+      floatData[2 * hw + i] = pixels[p + 2] * scl - 1.0;
     }
     return floatData;
   }
@@ -487,6 +534,9 @@ MathJax = {
     setStatus('processing', '正在识别…', true);
     errorMsg.style.display = 'none';
 
+    // 空图预检（纯色/无前景 → 直接拒绝，省去推理耗时）
+    if (isImageEmpty(img)) return { latex: '', confidence: 0 };
+
     var pixelValues = preprocessImage(img);
     var inputTensor = new ort.Tensor('float32', pixelValues, [1, 3, 384, 384]);
 
@@ -513,7 +563,10 @@ MathJax = {
     }
 
     var latex = repairLatex(decodeTokens(tokenIds));
+    // 解码器陷入循环重复 → 丢弃
+    if (isDegenerateLatex(latex)) latex = '';
     var avgConf = tokenProbs.length > 0 ? tokenProbs.reduce(function(a, b) { return a + b; }, 0) / tokenProbs.length : 0;
+    if (avgConf < CONFIDENCE_MIN) latex = ''; // 置信度过低 → 丢弃
     return { latex: latex, confidence: avgConf };
   }
 
@@ -704,6 +757,11 @@ MathJax = {
       try {
         var result = await recognize(img);
         lastRecognitionTime = Date.now();
+        if (!result.latex) {
+          showError('未识别到公式（置信度 ' + (result.confidence * 100).toFixed(1) + '% 过低）。请确保图片中有清晰的公式。');
+          setStatus('ready', '模型就绪！请重新上传公式图片', false);
+          return;
+        }
         resultCode.textContent = result.latex;
         renderMathPreview(result.latex);
         confidence.textContent = '置信度 ' + (result.confidence * 100).toFixed(1) + '%';
