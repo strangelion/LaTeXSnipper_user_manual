@@ -545,13 +545,23 @@
 
   function hwRecognize() {
     if (!ready) { showError('模型尚未加载完成，请稍等'); return; }
-    // 白底 + 全画布直出（不裁剪，避免小图放大失真）
     var tmp = document.createElement('canvas');
     tmp.width = hwCanvas.width; tmp.height = hwCanvas.height;
     var tctx = tmp.getContext('2d');
     tctx.fillStyle = '#ffffff';
     tctx.fillRect(0, 0, tmp.width, tmp.height);
     tctx.drawImage(hwCanvas, 0, 0);
+    // 深色模式：白字变黑字（反色非纯白像素）
+    if (document.documentElement.getAttribute('data-theme') === 'dark') {
+      var imgData = tctx.getImageData(0, 0, tmp.width, tmp.height);
+      var d = imgData.data;
+      for (var i = 0; i < d.length; i += 4) {
+        if (d[i] < 250 || d[i+1] < 250 || d[i+2] < 250) {
+          d[i] = 255 - d[i]; d[i+1] = 255 - d[i+1]; d[i+2] = 255 - d[i+2];
+        }
+      }
+      tctx.putImageData(imgData, 0, 0);
+    }
     tmp.toBlob(function(blob) { processImage(new File([blob], 'handwrite.png', { type: 'image/png' })); }, 'image/png');
   }
 
