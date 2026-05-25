@@ -107,6 +107,9 @@ function securityHeaders(isHtml) {
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
   };
   if (isHtml) {
+    // COOP/COEP 启用 SharedArrayBuffer（ONNX 多线程加速）
+    headers["Cross-Origin-Opener-Policy"] = "same-origin";
+    headers["Cross-Origin-Embedder-Policy"] = "credentialless";
     // CSP：限制脚本和样式来源
     headers["Content-Security-Policy"] = [
       "default-src 'self'",
