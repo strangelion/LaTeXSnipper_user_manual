@@ -541,10 +541,10 @@
   // ====== PDF 处理 ======
   async function processPDF(file) {
     const MAX_PAGES = 100;
-    const url = URL.createObjectURL(file);
 
     try {
-      const pdf = await pdfjsLib.getDocument(url).promise;
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       const totalPages = pdf.numPages;
 
       if (totalPages > MAX_PAGES) {
@@ -661,8 +661,9 @@
       const avgConf = allResults.reduce(function(s, r) { return s + r.confidence; }, 0) / allResults.length;
 
       return { latex: combined, confidence: avgConf, pageCount: totalPages };
-    } finally {
-      URL.revokeObjectURL(url);
+    } catch(e) {
+      showError('PDF 处理失败: ' + (e.message || e));
+      return null;
     }
   }
 
