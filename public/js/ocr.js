@@ -608,7 +608,7 @@
   // 拍照裁剪
   var camCropCanvas = document.getElementById('camCropCanvas');
   var camCropCtx = camCropCanvas.getContext('2d');
-  var camCropImg = null, camCropRect = null, camCropDragging = false, camCropStart = null;
+  var camCropImg = null, camCropRect = null, camCropDragging = false, camCropStart = null, camCropPath = [];
   var camActions = document.getElementById('camActions');
   var camCropActions = document.getElementById('camCropActions');
 
@@ -634,7 +634,7 @@
       camCropCtx.fillStyle = 'rgba(0,0,0,0.25)';
       camCropCtx.fillRect(0, 0, camCropCanvas.width, camCropCanvas.height);
       camCropCtx.fillStyle = 'rgba(255,255,255,0.9)';
-      var fs = Math.max(14, Math.min(24, camCropCanvas.width / 20));
+      var fs = Math.max(20, Math.min(48, camCropCanvas.width / 15));
       camCropCtx.font = fs + 'px "Segoe UI","Microsoft YaHei",sans-serif';
       camCropCtx.textAlign = 'center'; camCropCtx.textBaseline = 'middle';
       camCropCtx.fillText('拖拽框选要识别的区域', camCropCanvas.width/2, camCropCanvas.height/2);
