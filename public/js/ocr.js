@@ -161,6 +161,20 @@
     decoderSession = await ort.InferenceSession.create(decoderBuf, { executionProviders: ['webgpu', 'wasm'], graphOptimizationLevel: 'all' });
   }
 
+  async function loadPPOCR() {
+    try {
+      setStatus('loading', '正在加载文字识别模型…', true);
+      var resp = await fetch(MODEL_BASE + '/ch_PP-OCRv4_rec_infer.onnx');
+      if (!resp.ok) return;
+      var buf = await resp.arrayBuffer();
+      ppocrSession = await ort.InferenceSession.create(buf, { executionProviders: ['webgpu', 'wasm'], graphOptimizationLevel: 'all' });
+      resp = await fetch(MODEL_BASE + '/ppocr_keys_v1.txt');
+      ppocrDict = (await resp.text()).replace(/\r/g, '').split('\n').filter(function(l) { return l.trim(); });
+      ppocrDict.unshift('');
+      ppocrReady = true;
+    } catch(e) { /* PP-OCR optional */ }
+  }
+
   async function loadTokenizer() {
     setStatus('loading', '正在加载分词器…', true);
     const resp = await fetch(MODEL_BASE + '/tokenizer.json');
@@ -297,6 +311,46 @@
   }
 
   // ═══════════════════════════════════════════════
+  function preprocessPPOCR(img) {
+    var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    var targetH = 48, scale = targetH / ih, targetW = Math.min(Math.round(iw * scale), 320);
+    if (targetW < 4) targetW = 4;
+    var canvas = document.createElement('canvas');
+    canvas.width = targetW; canvas.height = targetH;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, targetW, targetH);
+    var pixels = ctx.getImageData(0, 0, targetW, targetH).data;
+    var floatData = new Float32Array(3 * targetH * targetW);
+    var hw = targetH * targetW;
+    for (var i = 0; i < hw; i++) {
+      var p = i * 4;
+      floatData[i] = (pixels[p] / 255.0 - 0.5) / 0.5;
+      floatData[hw + i] = (pixels[p + 1] / 255.0 - 0.5) / 0.5;
+      floatData[2 * hw + i] = (pixels[p + 2] / 255.0 - 0.5) / 0.5;
+    }
+    return { data: floatData, w: targetW, h: targetH };
+  }
+
+  function ctcDecode(logits, dict) {
+    var seqLen = logits.dims[1], vocab = logits.dims[2], result = [], lastId = -1;
+    for (var t = 0; t < seqLen; t++) {
+      var offset = t * vocab, maxIdx = 0, maxVal = logits.data[offset];
+      for (var v = 1; v < vocab; v++) { var val = logits.data[offset + v]; if (val > maxVal) { maxVal = val; maxIdx = v; } }
+      if (maxIdx !== 0 && maxIdx !== lastId) result.push(dict[maxIdx] || '');
+      lastId = maxIdx;
+    }
+    return result.join('');
+  }
+
+  async function recognizeText(img) {
+    if (!ppocrReady) return '';
+    var pp = preprocessPPOCR(img);
+    var input = new ort.Tensor('float32', pp.data, [1, 3, pp.h, pp.w]);
+    var out = await ppocrSession.run({ [ppocrSession.inputNames[0]]: input });
+    var logits = out[ppocrSession.outputNames[0]];
+    return ctcDecode(logits, ppocrDict);
+  }
+
   // 6. LaTeX 修复 (参考桌面版 mathcraft_tex_exporter.py)
   // ═══════════════════════════════════════════════
   function repairLatex(tex) {
