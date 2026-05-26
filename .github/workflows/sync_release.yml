@@ -25,6 +25,10 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             SHOULD="true"
             echo "manual trigger, force sync"
+            # 即使手动触发也获取最新时间戳用于存状态
+            RELEASE=$(curl -sL --retry 2 -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/SakuraMathcraft/LaTeXSnipper/releases/tags/v2.3.2_Final_Stable")
+            LATEST_ASSET=$(echo "$RELEASE" | jq -r '[.assets[].updated_at] | sort | last')
           else
             RELEASE=$(curl -sL --retry 2 -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/SakuraMathcraft/LaTeXSnipper/releases/tags/v2.3.2_Final_Stable")
