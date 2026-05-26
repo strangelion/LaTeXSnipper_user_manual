@@ -81,6 +81,9 @@ function cacheControl(p) {
   if (p.endsWith(".html")) {
     return "public, max-age=0, s-maxage=600, must-revalidate";
   }
+  if (/\.(js|css)$/i.test(p)) {
+    return "public, max-age=0, s-maxage=300, must-revalidate";
+  }
   return "public, max-age=0, s-maxage=3600, must-revalidate";
 }
 
