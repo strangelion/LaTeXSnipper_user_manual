@@ -336,6 +336,11 @@ function trackPageView(env, ctx, path) {
   }
 }
 
+// 在每次请求处理 HTML 前调用，确保冷启动时加载 KV
+async function pvEnsureLoadedBeforeTrack(env) {
+  if (Object.keys(pvMemory).length === 0) await pvEnsureLoaded(env);
+}
+
 async function getPageViewStats(env, month) {
   await pvEnsureLoaded(env);
   var total = 0, pages = {};
@@ -829,7 +834,7 @@ export default {
     let content = isBinary ? await resp.arrayBuffer() : await resp.text();
 
     // 页面访问统计
-    if (isHtml) trackPageView(env, ctx, path);
+    if (isHtml) { await pvEnsureLoadedBeforeTrack(env); trackPageView(env, ctx, path); }
 
     // R2 配额页面变换
     let pageQuota;

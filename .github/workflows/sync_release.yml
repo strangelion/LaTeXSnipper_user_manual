@@ -11,6 +11,8 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     outputs:
       should_sync: ${{ steps.decide.outputs.should_sync }}
     steps:
@@ -26,17 +28,17 @@ jobs:
           else
             RELEASE=$(curl -sL --retry 2 -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/SakuraMathcraft/LaTeXSnipper/releases/tags/v2.3.2_Final_Stable")
-            PUBLISHED=$(echo "$RELEASE" | jq -r '.published_at')
-            # 校验 API 响应有效（published_at 必须是合法时间戳）
-            if [ "$PUBLISHED" = "null" ] || [ -z "$PUBLISHED" ]; then
+            # 取所有 asset 中最新的 updated_at（文件重传也会更新此值）
+            LATEST_ASSET=$(echo "$RELEASE" | jq -r '[.assets[].updated_at] | sort | last')
+            if [ "$LATEST_ASSET" = "null" ] || [ -z "$LATEST_ASSET" ]; then
               echo "API response invalid, skip sync"
-              PUBLISHED=""
+              LATEST_ASSET=""
             else
-              echo "Release published: $PUBLISHED"
+              echo "Latest asset: $LATEST_ASSET"
               if [ -f .release_state.json ]; then
                 LAST=$(jq -r '.last_sync // empty' .release_state.json)
                 echo "Last sync: $LAST"
-                if [ "$PUBLISHED" != "$LAST" ]; then
+                if [ "$LATEST_ASSET" != "$LAST" ]; then
                   SHOULD="true"
                   echo "Update detected"
                 else
@@ -49,9 +51,8 @@ jobs:
             fi
           fi
           echo "should_sync=$SHOULD" >> $GITHUB_OUTPUT
-          # 仅在确认同步后更新状态文件
-          if [ "$SHOULD" = "true" ] && [ -n "$PUBLISHED" ]; then
-            echo "$RELEASE" | jq -r '{last_sync: .published_at}' > .release_state.json
+          if [ "$SHOULD" = "true" ] && [ -n "$LATEST_ASSET" ]; then
+            echo "{\"last_sync\": \"$LATEST_ASSET\"}" > .release_state.json
           fi
 
       - name: 保存状态文件
@@ -65,6 +66,8 @@ jobs:
     needs: check
     if: needs.check.outputs.should_sync == 'true'
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 
