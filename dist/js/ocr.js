@@ -617,8 +617,8 @@
 
   function setCropMode(mode) {
     camCropMode = mode;
-    camCropModeRectBtn.style.background = mode === 'rect' ? 'linear-gradient(135deg, #7c3aed, #a78bfa)' : 'rgba(255,255,255,0.1)';
-    camCropModeLassoBtn.style.background = mode === 'lasso' ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 'rgba(255,255,255,0.1)';
+    camCropModeRectBtn.classList.toggle('active', mode === 'rect');
+    camCropModeLassoBtn.classList.toggle('lasso-active', mode === 'lasso');
     camCropRect = null; camCropPath = []; drawCropOverlay();
   }
   camCropModeRectBtn.addEventListener('click', function() { setCropMode('rect'); });
@@ -703,16 +703,30 @@
   camCropCanvas.addEventListener('mousemove', function(e) {
     if (!camCropDragging) return;
     var p = camCropGetPos(e);
-    if (camCropMode === 'lasso') { camCropPath.push(p); camCropRect = null; }
-    else { camCropRect = { x: Math.min(camCropStart.x, p.x), y: Math.min(camCropStart.y, p.y), w: Math.abs(p.x - camCropStart.x), h: Math.abs(p.y - camCropStart.y) }; camCropPath = []; }
-    drawCropOverlay();
+    if (camCropMode === 'lasso') {
+      camCropPath.push(p); camCropRect = null;
+      // 增量画线
+      var prev = camCropPath[camCropPath.length - 2];
+      camCropCtx.strokeStyle = '#f97316'; camCropCtx.lineWidth = 2; camCropCtx.lineCap = 'round';
+      camCropCtx.beginPath(); camCropCtx.moveTo(prev.x, prev.y); camCropCtx.lineTo(p.x, p.y); camCropCtx.stroke();
+    } else {
+      camCropRect = { x: Math.min(camCropStart.x, p.x), y: Math.min(camCropStart.y, p.y), w: Math.abs(p.x - camCropStart.x), h: Math.abs(p.y - camCropStart.y) }; camCropPath = [];
+      drawCropOverlay();
+    }
   });
   camCropCanvas.addEventListener('touchmove', function(e) {
     if (!camCropDragging) return;
     var p = camCropGetPos(e);
-    if (camCropMode === 'lasso') { camCropPath.push(p); camCropRect = null; }
-    else { camCropRect = { x: Math.min(camCropStart.x, p.x), y: Math.min(camCropStart.y, p.y), w: Math.abs(p.x - camCropStart.x), h: Math.abs(p.y - camCropStart.y) }; camCropPath = []; }
-    drawCropOverlay(); e.preventDefault();
+    if (camCropMode === 'lasso') {
+      camCropPath.push(p); camCropRect = null;
+      var prev = camCropPath[camCropPath.length - 2];
+      camCropCtx.strokeStyle = '#f97316'; camCropCtx.lineWidth = 2; camCropCtx.lineCap = 'round';
+      camCropCtx.beginPath(); camCropCtx.moveTo(prev.x, prev.y); camCropCtx.lineTo(p.x, p.y); camCropCtx.stroke();
+    } else {
+      camCropRect = { x: Math.min(camCropStart.x, p.x), y: Math.min(camCropStart.y, p.y), w: Math.abs(p.x - camCropStart.x), h: Math.abs(p.y - camCropStart.y) }; camCropPath = [];
+      drawCropOverlay();
+    }
+    e.preventDefault();
   }, { passive: false });
   camCropCanvas.addEventListener('mouseup', function() { camCropDragging = false; });
   camCropCanvas.addEventListener('touchend', function() { camCropDragging = false; });
