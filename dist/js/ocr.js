@@ -597,21 +597,104 @@
   // 10. 相机
   // ═══════════════════════════════════════════════
   async function openCamera(e) { if (e) { e.preventDefault(); e.stopPropagation(); }
-    try { camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } }); camVideo.srcObject = camStream; camModal.classList.add('show'); }
+    try { camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } }); camVideo.srcObject = camStream; camVideo.style.display = ''; camCropCanvas.style.display = 'none'; camActions.style.display = 'flex'; camCropActions.style.display = 'none'; camModal.classList.add('show'); }
     catch(e) { showError('无法访问摄像头：' + (e.message || e) + '。请确认已授予相机权限。'); }
   }
-  function closeCamera() { if (camStream) { camStream.getTracks().forEach(function(t) { t.stop(); }); camStream = null; } camVideo.srcObject = null; camModal.classList.remove('show'); }
+  // 拍照裁剪
+  var camCropCanvas = document.getElementById('camCropCanvas');
+  var camCropCtx = camCropCanvas.getContext('2d');
+  var camCropImg = null, camCropRect = null, camCropDragging = false, camCropStart = null;
+  var camActions = document.getElementById('camActions');
+  var camCropActions = document.getElementById('camCropActions');
+
   function capturePhoto() { if (!camStream) return;
-    var canvas = document.createElement('canvas'); canvas.width = camVideo.videoWidth; canvas.height = camVideo.videoHeight;
-    canvas.getContext('2d').drawImage(camVideo, 0, 0); closeCamera();
-    canvas.toBlob(function(blob) { processImage(new File([blob], 'camera.jpg', { type: 'image/jpeg' })); }, 'image/jpeg', 0.92);
+    camCropImg = document.createElement('canvas');
+    camCropImg.width = camVideo.videoWidth; camCropImg.height = camVideo.videoHeight;
+    camCropImg.getContext('2d').drawImage(camVideo, 0, 0); closeCamera();
+    // 显示裁剪画布
+    camVideo.style.display = 'none';
+    camCropCanvas.style.display = 'block';
+    camCropCanvas.width = camCropImg.width; camCropCanvas.height = camCropImg.height;
+    camCropCtx.drawImage(camCropImg, 0, 0);
+    camCropRect = null; drawCropOverlay();
+    camActions.style.display = 'none';
+    camCropActions.style.display = 'flex';
   }
+
+  function drawCropOverlay() {
+    camCropCtx.drawImage(camCropImg, 0, 0);
+    if (!camCropRect) return;
+    // 暗色遮罩
+    var r = camCropRect;
+    camCropCtx.fillStyle = 'rgba(0,0,0,0.35)';
+    camCropCtx.fillRect(0, 0, camCropCanvas.width, r.y);
+    camCropCtx.fillRect(0, r.y, r.x, r.h);
+    camCropCtx.fillRect(r.x + r.w, r.y, camCropCanvas.width - r.x - r.w, r.h);
+    camCropCtx.fillRect(0, r.y + r.h, camCropCanvas.width, camCropCanvas.height - r.y - r.h);
+    // 边框
+    camCropCtx.strokeStyle = '#60a5fa'; camCropCtx.lineWidth = 2;
+    camCropCtx.strokeRect(r.x, r.y, r.w, r.h);
+  }
+
+  function camCropGetPos(e) {
+    var rect = camCropCanvas.getBoundingClientRect();
+    var sx = camCropCanvas.width / rect.width, sy = camCropCanvas.height / rect.height;
+    var cx = e.touches ? e.touches[0].clientX : e.clientX;
+    var cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: (cx - rect.left) * sx, y: (cy - rect.top) * sy };
+  }
+
+  camCropCanvas.addEventListener('mousedown', function(e) { var p = camCropGetPos(e); camCropStart = {x: p.x, y: p.y}; camCropDragging = true; });
+  camCropCanvas.addEventListener('touchstart', function(e) { var p = camCropGetPos(e); camCropStart = {x: p.x, y: p.y}; camCropDragging = true; e.preventDefault(); });
+  camCropCanvas.addEventListener('mousemove', function(e) {
+    if (!camCropDragging) return;
+    var p = camCropGetPos(e);
+    camCropRect = { x: Math.min(camCropStart.x, p.x), y: Math.min(camCropStart.y, p.y), w: Math.abs(p.x - camCropStart.x), h: Math.abs(p.y - camCropStart.y) };
+    drawCropOverlay();
+  });
+  camCropCanvas.addEventListener('touchmove', function(e) {
+    if (!camCropDragging) return;
+    var p = camCropGetPos(e);
+    camCropRect = { x: Math.min(camCropStart.x, p.x), y: Math.min(camCropStart.y, p.y), w: Math.abs(p.x - camCropStart.x), h: Math.abs(p.y - camCropStart.y) };
+    drawCropOverlay(); e.preventDefault();
+  }, { passive: false });
+  camCropCanvas.addEventListener('mouseup', function() { camCropDragging = false; });
+  camCropCanvas.addEventListener('touchend', function() { camCropDragging = false; });
+
+  document.getElementById('camCropConfirm').addEventListener('click', function() {
+    var src = camCropRect ? camCropImg : null;
+    var sx = src && camCropRect.w > 10 ? camCropRect.x : 0;
+    var sy = src && camCropRect.h > 10 ? camCropRect.y : 0;
+    var sw = src && camCropRect.w > 10 ? camCropRect.w : camCropImg.width;
+    var sh = src && camCropRect.h > 10 ? camCropRect.h : camCropImg.height;
+    var out = document.createElement('canvas'); out.width = sw; out.height = sh;
+    out.getContext('2d').drawImage(camCropImg, sx, sy, sw, sh, 0, 0, sw, sh);
+    camCropCanvas.style.display = 'none'; camCropActions.style.display = 'none'; camModal.classList.remove('show');
+    camCropImg = null; camCropRect = null;
+    out.toBlob(function(blob) { processImage(new File([blob], 'camera.jpg', { type: 'image/jpeg' })); }, 'image/jpeg', 0.92);
+  });
+
+  document.getElementById('camCropRetake').addEventListener('click', function() {
+    camCropCanvas.style.display = 'none'; camCropActions.style.display = 'none';
+    camCropImg = null; camCropRect = null;
+    openCamera();
+  });
+
   camTrigger.addEventListener('click', openCamera);
   camCapture.addEventListener('click', capturePhoto);
   camClose.addEventListener('click', closeCamera);
   camModal.addEventListener('click', function(e) { if (e.target === camModal) closeCamera(); });
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && camModal.classList.contains('show')) closeCamera(); });
   document.addEventListener('visibilitychange', function() { if (document.hidden && camStream) closeCamera(); });
+
+  function closeCamera() {
+    if (camStream) { camStream.getTracks().forEach(function(t) { t.stop(); }); camStream = null; }
+    camVideo.srcObject = null; camVideo.style.display = '';
+    camCropCanvas.style.display = 'none';
+    camActions.style.display = 'flex'; camCropActions.style.display = 'none';
+    camCropImg = null; camCropRect = null;
+    camModal.classList.remove('show');
+  }
 
   // ═══════════════════════════════════════════════
   // 11. 模式切换

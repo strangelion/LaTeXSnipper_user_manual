@@ -200,9 +200,14 @@ pre.result-code { background: #1e293b; color: #94a3b8; padding: 1rem 1.25rem; bo
   <!-- ═══ 相机 Modal ═══ -->
   <div class="cam-modal" id="camModal">
     <video id="camVideo" autoplay playsinline></video>
-    <div class="cam-actions">
+    <canvas id="camCropCanvas" style="display:none;max-width:95vw;max-height:70vh;border-radius:12px;cursor:crosshair;touch-action:none;"></canvas>
+    <div class="cam-actions" id="camActions">
       <button class="cam-btn cam-capture" id="camCapture">拍照识别</button>
       <button class="cam-btn cam-close" id="camClose">关闭</button>
+    </div>
+    <div class="cam-actions" id="camCropActions" style="display:none;">
+      <button class="cam-btn cam-capture" id="camCropConfirm">确认识别</button>
+      <button class="cam-btn cam-close" id="camCropRetake">重拍</button>
     </div>
   </div>
 
