@@ -650,9 +650,18 @@
     camCropCtx.fillRect(0, r.y, r.x, r.h);
     camCropCtx.fillRect(r.x + r.w, r.y, camCropCanvas.width - r.x - r.w, r.h);
     camCropCtx.fillRect(0, r.y + r.h, camCropCanvas.width, camCropCanvas.height - r.y - r.h);
-    // 边框
+    // 边框 + 四角圆点
     camCropCtx.strokeStyle = '#60a5fa'; camCropCtx.lineWidth = 2;
     camCropCtx.strokeRect(r.x, r.y, r.w, r.h);
+    // 四角拖拽手柄
+    var corners = [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.h], [r.x + r.w, r.y + r.h]];
+    var handleR = Math.max(6, Math.min(14, r.w / 20, r.h / 20));
+    camCropCtx.fillStyle = '#60a5fa';
+    for (var ci = 0; ci < 4; ci++) {
+      camCropCtx.beginPath();
+      camCropCtx.arc(corners[ci][0], corners[ci][1], handleR, 0, Math.PI * 2);
+      camCropCtx.fill();
+    }
   }
 
   function camCropGetPos(e) {
