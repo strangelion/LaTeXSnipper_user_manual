@@ -103,13 +103,18 @@
   // ═══════════════════════════════════════════════
   const MODEL_CACHE = 'ocr-models-v1';
   async function downloadWithProgress(url, label) {
-    const cache = await caches.open(MODEL_CACHE);
-    const cached = await cache.match(url);
-    if (cached) {
-      const buf = await cached.arrayBuffer();
-      setStatus('loading', label + ' (已缓存 ' + (buf.byteLength/1024/1024).toFixed(1) + ' MB)', true);
-      await new Promise(function(r) { setTimeout(r, 300); });
-      return buf;
+    let cache = null;
+    try { cache = await caches.open(MODEL_CACHE); } catch(e) { /* WebView 不支持 Cache API，跳过缓存 */ }
+    if (cache) {
+      try {
+        var cached = await cache.match(url);
+        if (cached) {
+          var buf = await cached.arrayBuffer();
+          setStatus('loading', label + ' (已缓存 ' + (buf.byteLength/1024/1024).toFixed(1) + ' MB)', true);
+          await new Promise(function(r) { setTimeout(r, 300); });
+          return buf;
+        }
+      } catch(e) { /* 缓存读取失败，继续网络下载 */ }
     }
     progressWrap.classList.add('show');
     progressFile.textContent = label;
@@ -138,7 +143,7 @@
     const blob = new Blob(chunks);
     const arrayBuffer = await blob.arrayBuffer();
     progressWrap.classList.remove('show');
-    try { await cache.put(url, new Response(arrayBuffer, { headers: { 'Content-Type': 'application/octet-stream', 'Cache-Control': 'max-age=604800' } })); } catch(e) {}
+    try { if (cache) { await cache.put(url, new Response(arrayBuffer, { headers: { 'Content-Type': 'application/octet-stream', 'Cache-Control': 'max-age=604800' } })); } } catch(e) {}
     return arrayBuffer;
   }
 
@@ -598,7 +603,7 @@
   // ═══════════════════════════════════════════════
   async function openCamera(e) { if (e) { e.preventDefault(); e.stopPropagation(); }
     try { camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } }); camVideo.srcObject = camStream; camVideo.style.display = ''; camCropCanvas.style.display = 'none'; camActions.style.display = 'flex'; camCropActions.style.display = 'none'; camModal.classList.add('show'); }
-    catch(e) { showError('无法访问摄像头：' + (e.message || e) + '。请确认已授予相机权限。'); }
+    catch(e) { showError('无法访问摄像头：' + (e.message || e) + '。请确认已授予相机权限（WebView 中可能不支持摄像头）。'); }
   }
   // 拍照裁剪
   var camCropCanvas = document.getElementById('camCropCanvas');
