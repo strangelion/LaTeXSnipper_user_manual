@@ -610,7 +610,10 @@
   function capturePhoto() { if (!camStream) return;
     camCropImg = document.createElement('canvas');
     camCropImg.width = camVideo.videoWidth; camCropImg.height = camVideo.videoHeight;
-    camCropImg.getContext('2d').drawImage(camVideo, 0, 0); closeCamera();
+    camCropImg.getContext('2d').drawImage(camVideo, 0, 0);
+    // 手动停流不调 closeCamera（会清空 camCropImg）
+    if (camStream) { camStream.getTracks().forEach(function(t) { t.stop(); }); camStream = null; }
+    camVideo.srcObject = null;
     // 显示裁剪画布
     camVideo.style.display = 'none';
     camCropCanvas.style.display = 'block';
