@@ -651,6 +651,7 @@
     return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
   }
   function drawCropOverlay() {
+    if (!camCropImg || !camCropCanvas) return;
     camCropCtx.drawImage(camCropImg, 0, 0);
     if (!camCropRect) {
       // 波浪呼吸动画
@@ -666,7 +667,7 @@
       camCropCtx.fillStyle = 'rgba(255,255,255,' + (wave * 0.55).toFixed(2) + ')';
       camCropCtx.font = (fs * 0.6) + 'px "Segoe UI","Microsoft YaHei",sans-serif';
       camCropCtx.fillText('不框选则识别整张图片', camCropCanvas.width/2, camCropCanvas.height/2 + fs * 1.4);
-      if (!camCropRect && camCropCanvas.style.display !== 'none') requestAnimationFrame(drawCropOverlay);
+      if (camCropImg && camCropCanvas && camCropCanvas.style.display !== 'none') requestAnimationFrame(drawCropOverlay);
       return;
     }
     // 暗色遮罩
