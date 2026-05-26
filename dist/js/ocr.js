@@ -57,6 +57,7 @@
   const camCapture = document.getElementById('camCapture');
   const camClose = document.getElementById('camClose');
   let camStream = null;
+  var ocrMode = 'formula'; // formula | text | mixed
 
   // -- 手写板 DOM --
   const tabImage = document.getElementById('tabImage');
@@ -535,10 +536,10 @@
     var img = new Image();
     img.onload = async function() {
       try {
-        var result = await recognize(img);
+        var result = ocrMode === 'text' ? { latex: '', confidence: 0 } : await recognize(img);
         lastRecognitionTime = Date.now();
-        // 混合模式：公式失败时尝试文字识别
-        if (!result.latex && ppocrReady) {
+        // 混合模式或文字模式：公式失败/未启用时尝试文字识别
+        if (!result.latex && ppocrReady && ocrMode !== 'formula') {
           var textResult = await recognizeText(img);
           if (textResult) {
             result.latex = textResult;
@@ -613,6 +614,8 @@
   }
 
   function hwRecognize() {
+    // 手写强制混合模式
+    var savedMode = ocrMode; ocrMode = 'mixed';
     if (!ready) { showError('模型尚未加载完成，请稍等'); return; }
     var tmp = document.createElement('canvas');
     tmp.width = hwCanvas.width; tmp.height = hwCanvas.height;
@@ -632,6 +635,7 @@
       tctx.putImageData(imgData, 0, 0);
     }
     tmp.toBlob(function(blob) { processImage(new File([blob], 'handwrite.png', { type: 'image/png' })); }, 'image/png');
+    ocrMode = savedMode;
   }
 
   // 自由拖拽缩放画布（右下角手柄）
@@ -955,6 +959,16 @@
   }
   tabImage.addEventListener('click', function() { switchMode('image'); });
   tabHandwrite.addEventListener('click', function() { switchMode('handwrite'); });
+  // 模型选择胶囊
+  document.querySelectorAll('.model-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.model-tab').forEach(function(b) { b.classList.remove('active','text-mode','mixed-mode'); });
+      ocrMode = this.dataset.mode;
+      this.classList.add('active');
+      if (ocrMode === 'text') this.classList.add('text-mode');
+      if (ocrMode === 'mixed') this.classList.add('mixed-mode');
+    });
+  });
 
   // ═══════════════════════════════════════════════
   // 12. UI 事件 (drop, paste, copy)

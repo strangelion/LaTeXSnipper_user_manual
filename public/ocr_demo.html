@@ -101,6 +101,14 @@ pre.result-code { background: #1e293b; color: #94a3b8; padding: 1rem 1.25rem; bo
 .mode-tab:last-child { border-radius: 0 10px 10px 0; }
 .mode-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
+.model-tabs { display: flex; justify-content: center; gap: 0; margin-bottom: 1rem; }
+.model-tab { padding: 5px 20px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--muted); cursor: pointer; font-size: 0.82rem; font-weight: 500; transition: all 0.15s; }
+.model-tab:first-child { border-radius: 14px 0 0 14px; }
+.model-tab:last-child { border-radius: 0 14px 14px 0; }
+.model-tab.active { background: linear-gradient(135deg, var(--accent), #7c3aed); color: #fff; border-color: transparent; }
+.model-tab.active.text-mode { background: linear-gradient(135deg, #f59e0b, #f97316); }
+.model-tab.active.mixed-mode { background: linear-gradient(135deg, #22c55e, #16a34a); }
+
 /* ── 7. 手写板 ── */
 .hw-panel { display: none; }
 .hw-panel.show { display: block; }
@@ -189,6 +197,13 @@ pre.result-code { background: #1e293b; color: #94a3b8; padding: 1rem 1.25rem; bo
   <div class="mode-tabs">
     <button class="mode-tab active" id="tabImage">图片识别</button>
     <button class="mode-tab" id="tabHandwrite">手写识别</button>
+  </div>
+
+  <!-- ═══ 模型选择 ═══ -->
+  <div class="model-tabs" id="modelTabs">
+    <button class="model-tab active" data-mode="formula">公式</button>
+    <button class="model-tab" data-mode="text">文字</button>
+    <button class="model-tab" data-mode="mixed">混合</button>
   </div>
 
   <!-- ═══ 图片识别模式：拖拽区 + 拍照 ═══ -->
