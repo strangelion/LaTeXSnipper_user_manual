@@ -842,9 +842,21 @@
     var sw = rect && rect.w > 10 ? rect.w : camCropImg.width;
     var sh = rect && rect.h > 10 ? rect.h : camCropImg.height;
     var out = document.createElement('canvas'); out.width = sw; out.height = sh;
-    out.getContext('2d').drawImage(camCropImg, sx, sy, sw, sh, 0, 0, sw, sh);
+    var octx = out.getContext('2d');
+    // 自由绘制：路径外填白（套索）
+    if (camCropPath && camCropPath.length > 2) {
+      octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, sw, sh);
+      octx.save();
+      octx.beginPath(); octx.moveTo(camCropPath[0].x - sx, camCropPath[0].y - sy);
+      for (var bi = 1; bi < camCropPath.length; bi++) octx.lineTo(camCropPath[bi].x - sx, camCropPath[bi].y - sy);
+      octx.closePath(); octx.clip();
+      octx.drawImage(camCropImg, sx, sy, sw, sh, 0, 0, sw, sh);
+      octx.restore();
+    } else {
+      octx.drawImage(camCropImg, sx, sy, sw, sh, 0, 0, sw, sh);
+    }
     camCropCanvas.style.display = 'none'; camCropActions.style.display = 'none'; camModal.classList.remove('show');
-    camCropImg = null; camCropRect = null;
+    camCropImg = null; camCropRect = null; camCropPath = [];
     out.toBlob(function(blob) { processImage(new File([blob], 'camera.jpg', { type: 'image/jpeg' })); }, 'image/jpeg', 0.92);
   });
 
