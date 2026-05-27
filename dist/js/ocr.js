@@ -965,8 +965,6 @@
       document.querySelectorAll('.model-tab').forEach(function(b) { b.classList.remove('active'); });
       ocrMode = this.dataset.mode;
       this.classList.add('active');
-      if (ocrMode === 'text')  
-       
     });
   });
 
