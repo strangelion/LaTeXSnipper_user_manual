@@ -1,10 +1,6 @@
 name: Build User Manual
 
 on:
-  schedule:
-    - cron: '37 3 * * *'  # daily check
-  repository_dispatch:
-    types: [build-user-manual]
   workflow_dispatch:
 
 permissions:
@@ -28,7 +24,6 @@ jobs:
             curl -sL "https://raw.githubusercontent.com/SakuraMathcraft/LaTeXSnipper/main/user_manual/$f" -o "$f"
             echo "  $f"
           done
-          # Move images to assets/images/
           mkdir -p assets/images
           for png in *.png; do
             [ -f "$png" ] && cp "$png" assets/images/ && echo "  $png -> assets/images/"
@@ -52,6 +47,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes."
           else
-            git commit -m "docs: auto-sync user manual from upstream"
+            git commit -m "docs: auto-build user manual"
             git push
           fi
