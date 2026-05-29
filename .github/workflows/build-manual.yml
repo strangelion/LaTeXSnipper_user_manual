@@ -30,8 +30,25 @@ jobs:
           done
           echo "Sync done."
 
-      - name: Build manual
+      - name: Build manual HTML
         run: python3 build_manual.py
+
+      - name: Generate PDF
+        run: |
+          pip install weasyprint -q
+          python3 -c "
+          from weasyprint import HTML
+          HTML('user_manual.html').write_pdf('LaTeXSnipper_User_Manual.pdf')
+          "
+          ls -lh LaTeXSnipper_User_Manual.pdf
+
+      - name: Upload PDF to R2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          npx wrangler r2 object delete "release/LaTeXSnipper_Manual.pdf" --remote 2>/dev/null || true
+          npx wrangler r2 object put "release/LaTeXSnipper_Manual.pdf" --file LaTeXSnipper_User_Manual.pdf --remote
+          echo "PDF uploaded to R2: release/LaTeXSnipper_Manual.pdf"
 
       - name: Copy to dist
         run: |
