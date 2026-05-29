@@ -36,6 +36,7 @@ jobs:
       - name: Generate PDF
         run: |
           pip install weasyprint -q
+          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
           python3 -c "
           from weasyprint import HTML
           HTML('user_manual.html').write_pdf('LaTeXSnipper_User_Manual.pdf')
@@ -46,7 +47,6 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          npm install wrangler@3 --no-save -q
           npx wrangler r2 object delete "release/LaTeXSnipper_Manual.pdf" --remote 2>/dev/null || true
           npx wrangler r2 object put "release/LaTeXSnipper_Manual.pdf" --file LaTeXSnipper_User_Manual.pdf --remote
           echo "PDF uploaded to R2: release/LaTeXSnipper_Manual.pdf"

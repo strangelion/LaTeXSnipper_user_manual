@@ -737,14 +737,18 @@ export default {
       // /dl/xxx → R2/xxx，追踪带宽，98% 时重定向 GitHub
       if (path.startsWith("/dl/")) {
         const R2_BASE = env.R2_MODEL_BASE || "https://release.interknot.dpdns.org";
-        const dlUrl = R2_BASE + "/" + path.slice(4); // /dl/foo → /foo
 
         // 配额阻断：重定向到 GitHub Releases
         const relQuota = await quotaGetStatus(env);
         if (relQuota.isBlock) {
-          if (path.includes("LaTeXSnipper_Manual.pdf")) {
-            return Response.redirect("https://raw.githubusercontent.com/strangelion/LaTeXSnipper_user_manual/master/release/LaTeXSnipper_Manual.pdf", 302);
-          }
+          return Response.redirect("https://github.com/SakuraMathcraft/LaTeXSnipper/releases", 302);
+        }
+
+        const dlUrl = R2_BASE + "/" + path.slice(4); // /dl/foo → /foo
+
+        // 配额阻断：重定向
+        const relQuota = await quotaGetStatus(env);
+        if (relQuota.isBlock) {
           return Response.redirect("https://github.com/SakuraMathcraft/LaTeXSnipper/releases", 302);
         }
 
