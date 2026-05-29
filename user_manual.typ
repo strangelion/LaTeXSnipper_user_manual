@@ -106,7 +106,7 @@
 
 // ── 封面图 ──
 #align(center)[
-  #image("assets/images/LaTeXSnipper.png", width: 100%)
+  #image("LaTeXSnipper.png", width: 100%)
   #v(1em)
 ]
 
@@ -1278,7 +1278,7 @@ python -m mathcraft_ocr ocr page.png --profile mixed --provider auto --output re
 
 公式密集的英文数学论文页面，包含大量行内公式和展示公式。
 
-#image("assets/images/mathcraft_abstract_algebra.png", width: 100%)
+#image("mathcraft_abstract_algebra.png", width: 100%)
 
 #v(0.5em)
 
@@ -1286,7 +1286,7 @@ python -m mathcraft_ocr ocr page.png --profile mixed --provider auto --output re
 
 以展示公式为主的期刊页面，包含公式编号、标签、页眉和页码。
 
-#image("assets/images/mathcraft_dynamics_journal.png", width: 100%)
+#image("mathcraft_dynamics_journal.png", width: 100%)
 
 #v(0.5em)
 
@@ -1294,7 +1294,7 @@ python -m mathcraft_ocr ocr page.png --profile mixed --provider auto --output re
 
 中文数学文档页面，包含文本与公式混合排版。
 
-#image("assets/images/mathcraft_chinese_lecture.png", width: 100%)
+#image("mathcraft_chinese_lecture.png", width: 100%)
 
 #v(0.5em)
 
@@ -1302,7 +1302,7 @@ python -m mathcraft_ocr ocr page.png --profile mixed --provider auto --output re
 
 稀疏的标题/封面式页面，用于验证版面分析稳定性。
 
-#image("assets/images/mathcraft_limits_series.png", width: 100%)
+#image("mathcraft_limits_series.png", width: 100%)
 
 == 性能参考
 
