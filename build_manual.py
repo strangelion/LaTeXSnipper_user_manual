@@ -903,7 +903,7 @@ def parse_typ(source):
 def enhance_volumes(html_content):
     """将卷标题增强为醒目分割条，但跳过目录块内的标题。"""
     vol_pattern = re.compile(
-        r'(<p><strong>(第[一二两]卷\s*[··]?\s*.+?)</strong></p>)',
+        r'(<p><strong>(第[一二两三]卷\s*[··]?\s*.+?)</strong></p>)',
         re.DOTALL
     )
 
