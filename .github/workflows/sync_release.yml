@@ -2,11 +2,12 @@ name: 同步 Release 到 R2
 
 on:
   schedule:
-    - cron: '7 3 * * *'  # 每天一次 (UTC 3:07)
+    - cron: '7 3 * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   check:
@@ -15,24 +16,23 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     outputs:
       should_sync: ${{ steps.decide.outputs.should_sync }}
+      should_build_manual: ${{ steps.check_manual.outputs.manual_updated }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: 检查是否需要同步
+      - name: 检查是否需要同步 Release
         id: decide
         run: |
           SHOULD="false"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             SHOULD="true"
             echo "manual trigger, force sync"
-            # 即使手动触发也获取最新时间戳用于存状态
             RELEASE=$(curl -sL --retry 2 -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/SakuraMathcraft/LaTeXSnipper/releases/tags/v2.3.2_Final_Stable")
             LATEST_ASSET=$(echo "$RELEASE" | jq -r '[.assets[].updated_at] | sort | last')
           else
             RELEASE=$(curl -sL --retry 2 -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/SakuraMathcraft/LaTeXSnipper/releases/tags/v2.3.2_Final_Stable")
-            # 取所有 asset 中最新的 updated_at（文件重传也会更新此值）
             LATEST_ASSET=$(echo "$RELEASE" | jq -r '[.assets[].updated_at] | sort | last')
             if [ "$LATEST_ASSET" = "null" ] || [ -z "$LATEST_ASSET" ]; then
               echo "API response invalid, skip sync"
@@ -59,12 +59,41 @@ jobs:
             echo "{\"last_sync\": \"$LATEST_ASSET\"}" > .release_state.json
           fi
 
+      - name: 检查上游用户手册是否更新
+        id: check_manual
+        if: github.event_name == 'schedule'
+        run: |
+          echo "manual_updated=false" >> $GITHUB_OUTPUT
+          UPSTREAM_SHA=$(curl -sL -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/SakuraMathcraft/LaTeXSnipper/contents/user_manual/user_manual.typ" \
+            | jq -r '.sha')
+          echo "Upstream SHA: $UPSTREAM_SHA"
+
+          if [ -f .manual_state.json ]; then
+            LAST_SHA=$(jq -r '.last_manual_sha // empty' .manual_state.json)
+            echo "Last SHA: $LAST_SHA"
+            if [ "$UPSTREAM_SHA" != "$LAST_SHA" ] && [ "$UPSTREAM_SHA" != "null" ]; then
+              echo "manual_updated=true" >> $GITHUB_OUTPUT
+              echo "Manual updated!"
+            fi
+          fi
+
+          if [ "$UPSTREAM_SHA" != "null" ] && [ -n "$UPSTREAM_SHA" ]; then
+            echo "{\"last_manual_sha\": \"$UPSTREAM_SHA\"}" > .manual_state.json
+          fi
+
       - name: 保存状态文件
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .release_state.json
-          git diff --staged --quiet || (git commit -m "chore: update sync state" && git pull --rebase && git push)
+          CHANGED=false
+          git add .release_state.json 2>/dev/null || true
+          git add .manual_state.json 2>/dev/null || true
+          git diff --staged --quiet || CHANGED=true
+          if [ "$CHANGED" = "true" ]; then
+            git commit -m "chore: update sync state"
+            git pull --rebase && git push
+          fi
 
   sync:
     needs: check
@@ -155,3 +184,17 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add download.html dist/download.html
           git diff --staged --quiet || (git commit -m "chore: sync release SHA256" && git pull --rebase && git push)
+
+  build-manual:
+    needs: check
+    if: needs.check.outputs.should_build_manual == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 触发用户手册构建
+        run: |
+          curl -sL -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-manual.yml/dispatches" \
+            -d '{"ref":"master"}'
+          echo "Triggered build-manual workflow"
