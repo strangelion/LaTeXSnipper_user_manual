@@ -53,14 +53,16 @@ jobs:
       - name: Copy to dist
         run: |
           cp user_manual.html dist/user_manual.html
-          mkdir -p dist/assets/images
+          mkdir -p release dist/assets/images
+          cp LaTeXSnipper_User_Manual.pdf release/LaTeXSnipper_Manual.pdf
+          cp LaTeXSnipper_User_Manual.pdf dist/LaTeXSnipper_Manual.pdf
           cp assets/images/*.png dist/assets/images/ 2>/dev/null || true
 
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add user_manual.typ user_manual.html dist/user_manual.html assets/images/*.png dist/assets/images/*.png
+          git add user_manual.typ user_manual.html dist/user_manual.html release/LaTeXSnipper_Manual.pdf dist/LaTeXSnipper_Manual.pdf assets/images/*.png dist/assets/images/*.png
           if git diff --staged --quiet; then
             echo "No changes."
           else

@@ -742,6 +742,9 @@ export default {
         // 配额阻断：重定向到 GitHub Releases
         const relQuota = await quotaGetStatus(env);
         if (relQuota.isBlock) {
+          if (path.includes("LaTeXSnipper_Manual.pdf")) {
+            return Response.redirect("https://raw.githubusercontent.com/strangelion/LaTeXSnipper_user_manual/master/release/LaTeXSnipper_Manual.pdf", 302);
+          }
           return Response.redirect("https://github.com/SakuraMathcraft/LaTeXSnipper/releases", 302);
         }
 
