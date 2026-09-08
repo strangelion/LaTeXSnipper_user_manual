@@ -4,7 +4,6 @@ import { recognitionDemos } from "../data/siteContent";
 function SectionHeading({ eyebrow, title, description }) {
   return (
     <header className="section-heading reveal">
-      <span>{eyebrow}</span>
       <h2>{title}</h2>
       {description && <p>{description}</p>}
     </header>

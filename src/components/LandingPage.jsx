@@ -8,6 +8,8 @@ import {
 } from "../data/siteContent";
 import { useReleaseInfo } from "../hooks/useReleaseInfo";
 import DemosSection from "./DemosSection";
+import MathWorld from "../three/MathWorld";
+import MathPlayground from "../p5/MathPlayground";
 import "../styles/landing.css";
 
 const GITHUB_URL = "https://github.com/SakuraMathcraft/LaTeXSnipper";
@@ -383,12 +385,13 @@ function SiteHeader() {
 function HeroSection() {
   return (
     <section className="hero-section" aria-labelledby="hero-title">
+      <MathWorld />
       <div className="hero-wordmark" aria-hidden="true">
         MATHEMATICS
       </div>
       <div className="ls-container hero-grid">
         <div className="hero-copy reveal">
-          <p className="hero-eyebrow">LOCAL-FIRST MATHEMATICAL WORKSPACE</p>
+          <span className="scene-index">MATHEMATICAL UNIVERSE</span>
           <h1 id="hero-title">
             把数学，
             <br />
@@ -431,13 +434,11 @@ function HeroSection() {
                 sizes={mascot.sizes}
                 alt="Snipper娘在公式工作区旁使用手写笔"
                 decoding="async"
-                fetchPriority="high"
+                fetchpriority="high"
               />
             </picture>
           )}
           <div className="hero-math-layer">
-            <div className="hero-orbit hero-orbit-one" aria-hidden="true" />
-            <div className="hero-orbit hero-orbit-two" aria-hidden="true" />
             <LiquidGlassSurface className="formula-sheet" thickness="panel">
               <span className="formula-sheet-label">DOCUMENT AST</span>
               <div className="formula-display">
@@ -497,10 +498,9 @@ function HeroSection() {
   );
 }
 
-function SectionHeading({ eyebrow, title, description }) {
+function SectionHeading({ eyebrow, title, description, scene }) {
   return (
     <header className="section-heading reveal">
-      <span>{eyebrow}</span>
       <h2>{title}</h2>
       {description && <p>{description}</p>}
     </header>
@@ -516,6 +516,7 @@ function ProductStage() {
     >
       <div className="ls-container product-stage-grid">
         <SectionHeading
+          scene="05 · WORKSPACE"
           eyebrow="真实工作台"
           title="从识别开始，在同一处完成数学工作。"
           description="截图识别、公式编辑、数学计算与格式导出位于一个真实的桌面工作区。"
@@ -537,7 +538,7 @@ function ProductStage() {
             alt="LaTeXSnipper 数学工作台主界面"
             loading={mascot.enabled ? "lazy" : undefined}
             decoding="async"
-            fetchPriority={mascot.enabled ? "auto" : "high"}
+            fetchpriority={mascot.enabled ? "auto" : "high"}
           />
           <figcaption>
             不是一张结果图片：每一步都保留可以继续编辑与使用的数学内容。
@@ -553,7 +554,7 @@ function WorkflowSection() {
     <section id="workflow" className="section-space workflow-section">
       <div className="ls-container">
         <SectionHeading
-          eyebrow="一个清楚的路径"
+          scene="02 · THE PIPELINE"
           title="捕获、理解、编辑、交付。"
         />
         <ol className="workflow-rail reveal">
@@ -609,7 +610,7 @@ function ProductStories() {
                   ))}
                 </ul>
                 <a className="text-link" href={feature.href}>
-                  {feature.cta} <span aria-hidden="true">→</span>
+                  {feature.cta} <svg className="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
                 </a>
               </div>
             </article>
@@ -631,6 +632,7 @@ function ConversionUniverse() {
       <div className="ls-container conversion-grid">
         <div className="reveal">
           <SectionHeading
+            scene="04 · TRANSFORM"
             eyebrow="一种数学，多种表达"
             title="让同一公式进入真正的工作流。"
             description="此处是格式示例；实际可用格式与稳定性由 Desktop 和 Core 的运行时能力决定。"
@@ -673,7 +675,15 @@ function ConversionUniverse() {
 function StatusBadge({ children }) {
   return (
     <span className="status-badge">
-      <span aria-hidden="true">●</span>
+      <svg
+        className="status-dot"
+        width="8"
+        height="8"
+        viewBox="0 0 8 8"
+        aria-hidden="true"
+      >
+        <circle cx="4" cy="4" r="3" fill="currentColor" />
+      </svg>
       {children}
     </span>
   );
@@ -688,47 +698,47 @@ function EcosystemSection() {
     >
       <div className="ls-container">
         <SectionHeading
+          scene="06 · ECOSYSTEM"
           eyebrow="清楚的生态边界"
           title="一个工作空间，四个独立项目。"
           description="版本、维护者和许可证分别标注；不将独立项目的能力混入 Desktop 描述。"
         />
-        <div className="ecosystem-grid">
+        <div className="ecosystem-list">
           {ecosystemProjects.map((project) => (
-            <LiquidGlassSurface
-              as="article"
-              className="ecosystem-card reveal"
-              thickness="panel"
-              key={project.repository}
-            >
-              <div className="ecosystem-topline">
-                <span>{project.scope}</span>
-                <StatusBadge>{project.status}</StatusBadge>
+            <article className="ecosystem-row reveal" key={project.repository}>
+              <div className="ecosystem-id">
+                <h3>{project.name}</h3>
+                <span className="ecosystem-scope">{project.scope}</span>
               </div>
-              <h3>{project.name}</h3>
-              <p>{project.description}</p>
-              <dl>
-                <div>
-                  <dt>版本</dt>
-                  <dd>{project.version}</dd>
-                </div>
-                <div>
-                  <dt>维护者</dt>
-                  <dd>{project.author}</dd>
-                </div>
-                <div>
-                  <dt>许可证</dt>
-                  <dd>{project.license}</dd>
-                </div>
-              </dl>
-              <a
-                className="text-link"
-                href={project.href}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                查看仓库 <span aria-hidden="true">↗</span>
-              </a>
-            </LiquidGlassSurface>
+              <div className="ecosystem-body">
+                <p>{project.description}</p>
+                <dl className="ecosystem-meta">
+                  <div>
+                    <dt>版本</dt>
+                    <dd>{project.version}</dd>
+                  </div>
+                  <div>
+                    <dt>维护者</dt>
+                    <dd>{project.author}</dd>
+                  </div>
+                  <div>
+                    <dt>许可证</dt>
+                    <dd>{project.license}</dd>
+                  </div>
+                </dl>
+              </div>
+              <div className="ecosystem-action">
+                <StatusBadge>{project.status}</StatusBadge>
+                <a
+                  className="text-link"
+                  href={project.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  查看仓库 <svg className="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9" /></svg>
+                </a>
+              </div>
+            </article>
           ))}
         </div>
       </div>
@@ -744,7 +754,6 @@ function PrivacySection() {
     >
       <div className="ls-container privacy-grid reveal">
         <div>
-          <p className="hero-eyebrow">LOCAL-FIRST / PRIVACY</p>
           <h2 id="privacy-title">
             你的数学内容，
             <br />
@@ -776,9 +785,7 @@ function DownloadCta() {
         thickness="panel"
       >
         <div>
-          <span>
-            DESKTOP {release.version} {release.channel}
-          </span>
+          <span>DESKTOP {release.version} {release.channel}</span>
           <h2>从下载中心开始，选择适合你的平台。</h2>
           <p>
             下载中心只显示经过 release manifest
@@ -843,22 +850,85 @@ function SiteFooter() {
   );
 }
 
+// Scene 04 — Understand: the Unidentified Document AST, dressed as a live tree.
+function UnderstandSection() {
+  return (
+    <section
+      id="understand"
+      className="section-space understand-section"
+      aria-labelledby="understand-title"
+    >
+      <div className="ls-container">
+        <SectionHeading
+          scene="03 · UNDERSTAND"
+          title="识别出的不是一行字符串，而是结构。"
+          description="每个公式都组织成有语义的 Document AST：节点可悬停、可展开，任一下标都与整棵结构联动。"
+        />
+        <div className="ast-stage reveal">
+          <LiquidGlassSurface className="ast-sheet" thickness="panel">
+            <span className="ast-sheet-label">DOCUMENT AST</span>
+            <div className="ast-formula">
+              <GaussianIntegralFormula />
+            </div>
+            <div className="ast-tree" role="img" aria-label="积分公式的文档 AST 结构">
+              <span className="ast-node ast-node--root">Integral</span>
+              <span className="ast-branch" />
+              <span className="ast-node ast-node--child">LowerBound · 0</span>
+              <span className="ast-node ast-node--child">UpperBound · ∞</span>
+              <span className="ast-node ast-node--child">
+                Exponential · e<sup>−x²</sup>
+              </span>
+              <span className="ast-node ast-node--child">Differential · dx</span>
+            </div>
+          </LiquidGlassSurface>
+          <div className="ast-copy">
+            <p>
+              结构在，才能继续编辑、计算与转换：同一棵 AST 能输出 LaTeX、Typst、MathML、OMML、SVG 或 Markdown。
+            </p>
+            <a className="text-link" href="/user_manual.html">
+              查看文档模型 <svg className="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function LandingPage() {
+  useEffect(() => {
+    const els = document.querySelectorAll(".reveal, .hero-copy");
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            e.target.classList.add("in-view");
+            io.unobserve(e.target);
+          }
+        }
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -6% 0px" },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
   return (
     <>
       <LiquidGlassFilter />
       <SiteHeader />
       <main id="main-content">
         <HeroSection />
-        <ProductStage />
         <WorkflowSection />
-        <ProductStories />
-        <DemosSection />
+        <UnderstandSection />
         <ConversionUniverse />
+        <ProductStage />
+        <DemosSection />
         <EcosystemSection />
-        <PrivacySection />
         <DownloadCta />
+        <PrivacySection />
         <FaqSection />
+        <MathPlayground />
       </main>
       <SiteFooter />
     </>
